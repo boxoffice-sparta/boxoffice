@@ -31,6 +31,8 @@ services:
     container_name: boxoffice-gateway
     ports:
       - "8080:8080"
+    env_file:
+      - ./.env
     depends_on:
       - eureka-server
 
@@ -40,7 +42,7 @@ services:
     ports:
       - "8081:8081"
     env_file:
-      - ./user-service/.env # 유저 서비스 내부의 .env 환경변수를 자동으로 도커에 주입
+      - ./.env
     depends_on:
       - eureka-server
       - postgres-db
