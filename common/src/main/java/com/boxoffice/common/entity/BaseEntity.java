@@ -100,6 +100,7 @@ public abstract class BaseEntity {
      * @param deletedBy 삭제를 수행한 사용자 UUID
      */
     public void softDelete(UUID deletedBy) {
+        if (isDeleted()) return;
         this.deletedAt = LocalDateTime.now();
         this.deletedBy = deletedBy;
     }
