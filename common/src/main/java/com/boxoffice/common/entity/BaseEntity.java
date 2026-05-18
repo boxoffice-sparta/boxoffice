@@ -1,6 +1,7 @@
 package com.boxoffice.common.entity;
 
 import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.impl.TimeBasedEpochGenerator;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
@@ -29,6 +30,9 @@ import java.util.UUID;
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
+
+    private static final TimeBasedEpochGenerator UUID_GENERATOR =
+            Generators.timeBasedEpochGenerator();
 
     /** PK. UUID v7 자동 생성. */
     @Id
@@ -70,7 +74,7 @@ public abstract class BaseEntity {
      *
      * 사용 예시:
      *   Hub hub = new Hub();
-     *   hub.assignId(Generators.timeBasedEpochGenerator().generate());
+     *   hub.assignId(UUID_GENERATOR.generate());
      *   UUID hubId = hub.getId(); // 저장 전에 id 알 수 있음
      *   hubRepository.save(hub); // @PrePersist에서 id 건너뜀
      *
@@ -87,9 +91,9 @@ public abstract class BaseEntity {
      * assignId()로 미리 세팅한 경우 건너뜀.
      */
     @PrePersist
-    public void prePersist() {
+    protected void prePersist() {
         if (id == null) {
-            id = Generators.timeBasedEpochGenerator().generate();
+            id = UUID_GENERATOR.generate();
         }
     }
 
