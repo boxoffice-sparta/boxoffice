@@ -47,5 +47,17 @@ services:
       - eureka-server
       - postgres-db
 
+  # 6. 배송 담당자 서비스
+  delivery-manager-service:
+    build: ./delivery_manager_service
+    container_name: boxoffice-delivery-manager
+    ports:
+      - "8086:8086"
+    env_file:
+      - ./.env
+    depends_on:
+      - eureka-server
+      - postgres-db
+
 volumes:
   postgres_data:

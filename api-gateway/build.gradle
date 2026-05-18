@@ -27,9 +27,6 @@ dependencies {
 
 	// 핵심 2: 유레카 서버에 등록하기 위한 클라이언트 부품
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
-
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {
