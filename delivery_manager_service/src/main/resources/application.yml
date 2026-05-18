@@ -1,20 +1,20 @@
 server:
-  port: 8086 # ? ??? ????? ?? ?? ??
+  port: 8086
 
 spring:
   application:
-    name: delivery-manager-service # ???? ? ???? ?????.
+    name: delivery-manager-service
 
-  # 1. ??? ??? ?? ?? (Spring Boot 3.5.x ?? ?? ??)
+  # 1. (Spring Boot 3.5.x )
   cloud:
     compatibility-verifier:
       enabled: false
 
-  # 2. ?? PostgreSQL ?? ?? (????? ?? ??? ???)
+  # 2. PostgreSQL
   datasource:
-    url: jdbc:postgresql://localhost:54321/sparta_logistics?currentSchema=delivery_manager_schema
-    username: sparta_admin
-    password: password123
+    url: jdbc:postgresql://localhost:54321/${DB_NAME:sparta_logistics}?currentSchema=delivery_manager_schema
+    username: ${DB_USERNAME:sparta_admin}
+    password: ${DB_PASSWORD:password123}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -25,7 +25,7 @@ spring:
       hibernate:
         format_sql: true
 
-  # 3. Redis ?? ??
+  # 3. Redis
   data:
     redis:
       host: localhost
@@ -34,4 +34,4 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/ # ??? ??? ?? ??
+      defaultZone: http://localhost:8761/eureka/

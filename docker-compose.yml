@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: sparta-postgres
     environment:
-      POSTGRES_USER: sparta_admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: sparta_logistics
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "54321:5432"
     volumes:
