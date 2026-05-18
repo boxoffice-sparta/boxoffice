@@ -1,5 +1,6 @@
 package com.boxoffice.common.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -25,6 +26,7 @@ import java.util.UUID;
  *       }
  *       return Optional.of(UUID.fromString(auth.getName()));
  */
+@Slf4j
 @Component
 public class AuditorAwareImpl implements AuditorAware<UUID> {
 
@@ -46,9 +48,15 @@ public class AuditorAwareImpl implements AuditorAware<UUID> {
                     (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
             String userId = attrs.getRequest().getHeader(USER_ID_HEADER);
             if (userId == null) return Optional.empty();
-            return Optional.of(UUID.fromString(userId));
+
+            try {
+                return Optional.of(UUID.fromString(userId));
+            } catch (IllegalArgumentException e) {
+                log.warn("[AuditorAware] Invalid UUID format: {}", userId);
+                return Optional.empty();
+            }
+
         } catch (IllegalStateException e) {
-            // HTTP 요청 컨텍스트 밖 (스케줄러 등)
             return Optional.empty();
         }
     }
