@@ -22,8 +22,6 @@ import java.util.UUID;
 @Component
 public class AuditorAwareImpl implements AuditorAware<UUID> {
 
-    // TODO: Gateway 헤더 이름 확정 후 변경 필요
-    //       현재 Gateway 코드 기준: X-User-Id
     private static final String USER_ID_HEADER = "X-User-Id";
 
     /**

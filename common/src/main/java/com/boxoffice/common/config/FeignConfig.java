@@ -9,14 +9,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * FeignClient 공통 설정 클래스.
- *
  * 서비스 간 호출 시 Gateway가 주입한 사용자 정보 헤더를 자동으로 전달한다.
- *
- * TODO: Gateway 헤더 이름 확정 후 변경 필요.
- *       현재 Gateway 코드 기준:
- *         X-User-Id       → userId
- *         X-User-Username → username
- *         X-User-Role     → userRole
  */
 @Configuration
 public class FeignConfig {
@@ -33,7 +26,6 @@ public class FeignConfig {
             ServletRequestAttributes attrs =
                     (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attrs != null) {
-                // TODO: Gateway 헤더 이름 확정 후 변경 필요
                 String userId   = attrs.getRequest().getHeader("X-User-Id");
                 String username = attrs.getRequest().getHeader("X-User-Username");
                 String userRole = attrs.getRequest().getHeader("X-User-Role");
