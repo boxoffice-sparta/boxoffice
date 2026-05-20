@@ -46,7 +46,7 @@ jobs:
 
           # Gemini API 요청 페이로드 구성
           api_key = os.environ["GEMINI_API_KEY"]
-          url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+          url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
           
           prompt = (
               "당신은 전 세계 최고의 소프트웨어 아키텍트이자 Spring Boot 백엔드 시니어 개발자입니다. "
