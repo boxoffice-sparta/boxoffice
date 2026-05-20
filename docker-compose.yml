@@ -25,8 +25,6 @@ services:
     container_name: boxoffice-eureka
     ports:
       - "8761:8761"
-    environment:
-      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
 
   api-gateway:
     build: ./apigateway
@@ -37,8 +35,6 @@ services:
       - ./.env
     depends_on:
       - eureka-server
-    environment:
-      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
 
   user-service:
     build: ./userservice
@@ -50,8 +46,6 @@ services:
     depends_on:
       - eureka-server
       - postgres-db
-    environment:
-      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
 
   # 6. 배송 담당자 서비스
   delivery-manager-service:
@@ -64,8 +58,6 @@ services:
     depends_on:
       - eureka-server
       - postgres-db
-    environment:
-      - SPRING_CLOUD_COMPATIBILITY_VERIFIER_ENABLED=false
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0.0
