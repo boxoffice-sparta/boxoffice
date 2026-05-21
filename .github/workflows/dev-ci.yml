@@ -148,7 +148,7 @@ jobs:
             -x checkstyleTest
 
       - name: Jacoco 커버리지 결과
-        if: always()
+        if: (matrix.changed == 'true' || needs.detect-changes.outputs.common == 'true') && always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-coverage-${{ matrix.service }}
