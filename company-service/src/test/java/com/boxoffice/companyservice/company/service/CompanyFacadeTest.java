@@ -43,6 +43,31 @@ class CompanyFacadeTest {
     private CompanyService companyService;
 
     @Test
+    @DisplayName("실패 - 생성 요청이 없으면 입력값 오류로 처리하고 Hub 검증과 저장을 호출하지 않는다")
+    void createCompanyWithoutRequest() {
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.createCompany(null, "MASTER", null));
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @Test
+    @DisplayName("실패 - 요청 hubId가 없으면 입력값 오류로 처리하고 Hub 검증과 저장을 호출하지 않는다")
+    void createCompanyWithoutRequestHubId() {
+        // given
+        CompanyCreateRequestDto request = new CompanyCreateRequestDto();
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.createCompany(request, "MASTER", null));
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @Test
     @DisplayName("성공 - MASTER는 담당 허브 헤더 없이 업체를 생성한다")
     void createCompanyWithMasterRole() {
         // given
@@ -159,7 +184,7 @@ class CompanyFacadeTest {
     }
 
     @ParameterizedTest(name = "실패 - role={0}은 업체를 생성할 수 없다")
-    @ValueSource(strings = {"DELIVERY_MANAGER", "SUPPLIER_MANAGER"})
+    @ValueSource(strings = {"DELIVERY_MANAGER", "SUPPLIER_MANAGER", "UNKNOWN_ROLE"})
     void createCompanyWithForbiddenRole(String userRole) {
         // given
         CompanyCreateRequestDto request = createRequest(UUID.randomUUID());
@@ -184,6 +209,12 @@ class CompanyFacadeTest {
         assertThat(throwable)
                 .isInstanceOfSatisfying(BaseException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.FORBIDDEN));
+    }
+
+    private void assertInvalidInput(Throwable throwable) {
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
 
     private CompanyCreateRequestDto createRequest(UUID hubId) {
