@@ -1,0 +1,115 @@
+name: Service CI (서비스 단위의 CI)
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "Gradle 서브프로젝트 이름 (예: api-gateway)"
+        required: true
+        type: string
+      changed:
+        description: "해당 서비스가 변경되었는지 여부 ('true' / 'false')"
+        required: true
+        type: string
+      common-changed:
+        description: "공통 모듈(common)이 변경되었는지 여부"
+        required: false
+        type: string
+        default: 'false'
+
+env:
+  JAVA_VERSION: '21'
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+
+jobs:
+  checkstyle:
+    name: "Checkstyle - ${{ inputs.service }}"
+
+    if: inputs.changed == 'true' || inputs.common-changed == 'true'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '1'
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Run Checkstyle
+        run: |
+          ./gradlew :${{ inputs.service }}:checkstyleMain \
+            --no-daemon \
+            --continue \
+            --stacktrace
+
+      - name: Upload Checkstyle report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: ignore
+          name: checkstyle-report-${{ inputs.service }}
+          path: ${{ inputs.service }}/build/reports/checkstyle/
+          retention-days: 7
+
+  unit-test:
+    name: "Unit Test - ${{ inputs.service }}"
+    needs: checkstyle
+
+    if: inputs.changed == 'true' || inputs.common-changed == 'true'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '1'
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Run unit tests
+        run: |
+          ./gradlew :${{ inputs.service }}:test \
+            --no-daemon \
+            -x checkstyleMain \
+            -x checkstyleTest
+
+      - name: Upload Jacoco coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: ignore
+          name: jacoco-coverage-${{ inputs.service }}
+          path: ${{ inputs.service }}/build/reports/jacoco/test/html/
+          retention-days: 3
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: ignore
+          name: unit-test-results-${{ inputs.service }}
+          path: ${{ inputs.service }}/build/reports/tests/test/
+          retention-days: 7
+
+      - name: Jacoco PR Comment
+        uses: Madrapps/jacoco-report@v1.6.1
+        with:
+          paths: ${{ inputs.service }}/build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 70
+          min-coverage-changed-files: 70
+          title: "Jacoco 커버리지 리포트 - ${{ inputs.service }}"
+          update-comment: true
