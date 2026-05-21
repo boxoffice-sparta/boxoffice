@@ -1,16 +1,23 @@
 package com.boxoffice.api_gateway.filter;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.Base64;
+
+@Slf4j
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
 
-    public static class Config {
-        // 설정이 필요한 경우 필드 추가
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public static class Config { }
 
     public JwtAuthenticationFilter() {
         super(Config.class);
@@ -20,33 +27,37 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
-
             String authHeader = request.getHeaders().getFirst("Authorization");
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
 
-                // TODO: Keycloak 또는 JWT 유효성 검증 및 Redis 블랙리스트 체크 로직 들어갈 자리
-                // (나중에 토큰 라이브러리를 통해 claims.get("hub_id") 형태로 파싱하게 됩니다.)
+                try {
+                    String[] chunks = token.split("\\.");
+                    if (chunks.length != 3) {
+                        throw new IllegalArgumentException("유효하지 않은 JWT 형식입니다.");
+                    }
 
-                // Keycloak 토큰에서 꺼내올 파싱 결과값 예시
-                String userId = "user-uuid-1234";
-                String username = "hub_manager_jun";
-                String userRole = "HUB_MANAGER";
-                String hubId = "hub-uuid-7777";
+                    String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+                    JsonNode jsonNode = objectMapper.readTree(payload);
 
-                ServerHttpRequest.Builder requestBuilder = request.mutate()
-                        .header("X-User-Id", userId)
-                        .header("X-User-Username", username)
-                        .header("X-User-Role", userRole);
+                    String userId = jsonNode.path("sub").asText();
+                    String username = jsonNode.path("preferred_username").asText();
 
-                if ("HUB_MANAGER".equals(userRole) && hubId != null) {
-                    requestBuilder.header("X-User-Hub-Id", hubId);
+                    log.info("[Gateway] 토큰 해독 완료! 추출된 진짜 UserId: {}", userId);
+
+                    ServerHttpRequest mutatedRequest = request.mutate()
+                            .header("X-User-Id", userId)
+                            .header("X-User-Username", username)
+                            .build();
+
+                    return chain.filter(exchange.mutate().request(mutatedRequest).build());
+
+                } catch (Exception e) {
+                    log.error("[Gateway] 토큰 파싱 에러 발생: {}", e.getMessage());
+                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return exchange.getResponse().setComplete();
                 }
-
-                ServerHttpRequest mutatedRequest = requestBuilder.build();
-
-                return chain.filter(exchange.mutate().request(mutatedRequest).build());
             }
 
             return chain.filter(exchange);

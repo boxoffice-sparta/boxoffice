@@ -9,10 +9,7 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    /**
-     * 🌟 Keycloak의 고유 식별자(sub)로 우리 DB의 유저를 찾습니다.
-     * 회원가입 시 중복 가입 방지 및 로그인 유저 정보 조회 시 핵심 기둥이 되는 메서드입니다.
-     */
+    // 🌟 KeycloakSub(UUID)로 유저를 찾는 메서드 추가
     Optional<User> findByKeycloakSub(String keycloakSub);
 
     /**
@@ -20,4 +17,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 중복 이메일 가입을 막기 위해 필요합니다.
      */
     Optional<User> findByEmailValue(String email);
+
 }

@@ -18,6 +18,8 @@ spring:
           uri: lb://user-service
           predicates:
             - Path=/api/v1/users/**, /api/v1/auth/**
+          filters:
+            - JwtAuthenticationFilter
 
         - id: delivery-manager-service
           uri: lb://delivery-manager-service

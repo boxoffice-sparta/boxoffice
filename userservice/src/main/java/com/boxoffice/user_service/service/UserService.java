@@ -5,6 +5,7 @@ import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.user_service.client.KeycloakClient;
 import com.boxoffice.user_service.client.KeycloakUserCreateRequestDto;
 import com.boxoffice.user_service.dto.UserLoginRequestDto;
+import com.boxoffice.user_service.dto.UserResponseDto;
 import com.boxoffice.user_service.dto.UserSignupRequestDto;
 import com.boxoffice.user_service.entity.Email;
 import com.boxoffice.user_service.entity.User;
@@ -153,6 +154,20 @@ public class UserService {
             log.warn("[Login] 로그인 실패 (자격증명 오류). Username: {}", request.getUsername());
             throw new BaseException(UserErrorCode.INVALID_CREDENTIALS);
         }
+    }
+
+    /**
+     * 🌟 내 정보 조회 (Gateway 헤더 기반)
+     */
+    @Transactional(readOnly = true)
+    public UserResponseDto getMyInfo(String keycloakSub) {
+        User user = userRepository.findByKeycloakSub(keycloakSub)
+                .orElseThrow(() -> {
+                    log.error("[UserSearch] 존재하지 않는 유저 조회 시도. Sub: {}", keycloakSub);
+                    return new BaseException(UserErrorCode.USER_NOT_FOUND);
+                });
+
+        return UserResponseDto.from(user);
     }
 
 }
