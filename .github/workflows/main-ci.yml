@@ -138,17 +138,23 @@ jobs:
 
       - name: 변경된 서비스 목록 수집
         id: services
+        env:
+          OUT_COMMON: ${{ needs.detect-changes.outputs.common }}
+          OUT_GW:     ${{ needs.detect-changes.outputs['api-gateway'] }}
+          OUT_DM:     ${{ needs.detect-changes.outputs.delivery_manager_service }}
+          OUT_EU:     ${{ needs.detect-changes.outputs['eureka-server'] }}
+          OUT_US:     ${{ needs.detect-changes.outputs['user-service'] }}
         run: |
           SERVICES=""
           append() {
             [[ "$1" == "true" ]] && SERVICES="${SERVICES:+$SERVICES,}$2"
           }
-          append "${{ needs.detect-changes.outputs.common }}"                   "common"
-          append "${{ needs.detect-changes.outputs['api-gateway'] }}"           "api-gateway"
-          append "${{ needs.detect-changes.outputs.delivery_manager_service }}" "delivery_manager_service"
-          append "${{ needs.detect-changes.outputs['eureka-server'] }}"         "eureka-server"
-          append "${{ needs.detect-changes.outputs['user-service'] }}"          "user-service"
-          # 새 서비스 추가 시 추가 부분 4
+          append "$OUT_COMMON" "common"
+          append "$OUT_GW"     "api-gateway"
+          append "$OUT_DM"     "delivery_manager_service"
+          append "$OUT_EU"     "eureka-server"
+          append "$OUT_US"     "user-service"
+          # 새 서비스 추가 시 append 줄 추가
 
           echo "list=${SERVICES:-none}" >> $GITHUB_OUTPUT
 
