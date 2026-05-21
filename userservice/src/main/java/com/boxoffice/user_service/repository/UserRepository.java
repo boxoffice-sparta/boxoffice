@@ -1,8 +1,10 @@
 package com.boxoffice.user_service.repository;
 
 import com.boxoffice.user_service.entity.User;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
 
@@ -18,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     Optional<User> findByEmailValue(String email);
 
+    // 전체 유저 목록을 페이징하여 가져오는 메서드
+    Page<User> findAll(Pageable pageable);
 }

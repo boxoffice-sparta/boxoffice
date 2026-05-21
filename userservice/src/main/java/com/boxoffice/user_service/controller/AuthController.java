@@ -39,15 +39,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<Map<String, String>>> login(@RequestBody UserLoginRequestDto request) {
 
-        // 1. 서비스에 로그인 위임 및 토큰 받아오기
         String accessToken = userService.login(request);
 
-        // 2. JSON 형태({ "accessToken": "eyJh..." })로 이쁘게 감싸기
         Map<String, String> responseData = new HashMap<>();
         responseData.put("accessToken", accessToken);
 
-        // 3. 200 OK와 함께 공통 규격(ApiResponse)으로 반환
-        // (팀원의 ApiResponse에 success() 메서드가 있다고 가정)
         return ResponseEntity.ok(ApiResponse.success(responseData));
     }
 }

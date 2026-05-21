@@ -15,9 +15,11 @@ import com.boxoffice.user_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Pageable;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -168,6 +170,18 @@ public class UserService {
                 });
 
         return UserResponseDto.from(user);
+    }
+
+    /**
+     * 🌟 사용자 목록 검색 (페이징 포함)
+     */
+    @Transactional(readOnly = true)
+    public Page<UserResponseDto> getUserList(Pageable pageable) {
+        // 1. DB에서 페이지네이션이 적용된 유저 목록 조회
+        Page<User> userPage = userRepository.findAll(pageable);
+
+        // 2. Page<User>를 Page<UserResponseDto>로 변환 (map 함수 사용)
+        return userPage.map(UserResponseDto::from);
     }
 
 }

@@ -17,7 +17,6 @@ public class KeycloakUserCreateRequestDto {
     public KeycloakUserCreateRequestDto(String username, String email, String password, String name) {
         this.username = username;
         this.email = email;
-        // 한국인 이름 특성상 성과 이름을 찢기 모호하므로 firstName에 전체 이름을 다 밀어 넣는 것이 현업 꿀팁입니다.
         this.firstName = name;
         this.lastName = "";
         this.credentials = Collections.singletonList(new Credential(password));

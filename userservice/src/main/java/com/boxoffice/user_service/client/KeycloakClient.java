@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
-// URL은 application.yml 환경변수로 관리하되, 기본값은 우리 도커 포트(8089)로 설정합니다.
 @FeignClient(name = "keycloak-client", url = "${keycloak.url:http://localhost:8089}")
 public interface KeycloakClient {
 
