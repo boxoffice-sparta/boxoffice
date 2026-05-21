@@ -7,9 +7,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, UUID> {
 
     // 🌟 KeycloakSub(UUID)로 유저를 찾는 메서드 추가
     Optional<User> findByKeycloakSub(String keycloakSub);

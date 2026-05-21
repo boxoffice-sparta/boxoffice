@@ -39,4 +39,8 @@ public class User extends BaseEntity {
         this.status = status != null ? status : UserStatus.PENDING;
         this.hubId = hubId;
     }
+
+    public void updateStatus(UserStatus newStatus) {
+        this.status = newStatus;
+    }
 }

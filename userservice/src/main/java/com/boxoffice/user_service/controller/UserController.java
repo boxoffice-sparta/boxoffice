@@ -2,6 +2,7 @@ package com.boxoffice.user_service.controller;
 
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.user_service.dto.UserResponseDto;
+import com.boxoffice.user_service.dto.UserStatusUpdateRequestDto;
 import com.boxoffice.user_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,15 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 import org.springframework.data.domain.Pageable;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RestController
@@ -60,5 +55,19 @@ public class UserController {
         Page<UserResponseDto> responseDtoPage = userService.getUserList(requesterId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(responseDtoPage));
+    }
+
+    // 🌟 가입 승인/거절 API
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<UserResponseDto>> updateUserStatus(
+            @PathVariable UUID id, // 🌟 Long -> UUID 로 변경!
+            @RequestHeader("X-User-Id") String requesterId,
+            @RequestBody UserStatusUpdateRequestDto request) {
+
+        log.info("[Controller] 유저 상태 변경 요청. TargetId: {}, RequesterId: {}, NewStatus: {}", id, requesterId, request.getStatus());
+
+        UserResponseDto responseDto = userService.updateUserStatus(id, requesterId, request);
+
+        return ResponseEntity.ok(ApiResponse.success(responseDto));
     }
 }

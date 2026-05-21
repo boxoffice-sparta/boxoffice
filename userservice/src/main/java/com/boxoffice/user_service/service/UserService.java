@@ -7,6 +7,7 @@ import com.boxoffice.user_service.client.KeycloakUserCreateRequestDto;
 import com.boxoffice.user_service.dto.UserLoginRequestDto;
 import com.boxoffice.user_service.dto.UserResponseDto;
 import com.boxoffice.user_service.dto.UserSignupRequestDto;
+import com.boxoffice.user_service.dto.UserStatusUpdateRequestDto;
 import com.boxoffice.user_service.entity.Email;
 import com.boxoffice.user_service.entity.User;
 import com.boxoffice.user_service.entity.UserStatus;
@@ -20,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Pageable;
+import java.util.UUID;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -206,5 +208,36 @@ public class UserService {
         // 3. DTO 변환 후 반환
         return userPage.map(UserResponseDto::from);
     }
+    /**
+     * 🌟 가입 승인/거절 (상태 변경)
+     */
+    @Transactional
+    public UserResponseDto updateUserStatus(UUID targetUserId, String requesterSub, UserStatusUpdateRequestDto request) {
 
+        User requester = userRepository.findByKeycloakSub(requesterSub)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        String roleName = requester.getRole().name();
+
+        if ("HUB_MANAGER".equals(roleName)) {
+            // 허브 매니저라면, 대상자가 '자신과 같은 허브' 소속일 때만 승인 가능
+            if (!requester.getHubId().equals(targetUser.getHubId())) {
+                log.warn("[UserStatus] 권한 없음: 다른 허브 소속 유저 상태 변경 시도. Requester: {}, TargetHub: {}", requester.getHubId(), targetUser.getHubId());
+                throw new BaseException(CommonErrorCode.FORBIDDEN);
+            }
+        } else if (!"MASTER".equals(roleName)) {
+            // 마스터나 허브 매니저가 아니면 접근 불가
+            throw new BaseException(CommonErrorCode.FORBIDDEN);
+        }
+
+        UserStatus newStatus = UserStatus.valueOf(request.getStatus().toUpperCase());
+        targetUser.updateStatus(newStatus);
+
+        log.info("[UserStatus] 유저 상태 변경 완료. TargetUserId: {}, NewStatus: {}", targetUserId, newStatus);
+
+        return UserResponseDto.from(targetUser);
+    }
 }
