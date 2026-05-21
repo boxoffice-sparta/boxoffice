@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "54321:5432"
+      - "5432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
@@ -55,6 +55,8 @@ services:
       - "8082:8082"
     env_file:
       - ./.env
+    environment:
+      - DB_HOST=postgres-db
     depends_on:
       - eureka-server
       - postgres-db
