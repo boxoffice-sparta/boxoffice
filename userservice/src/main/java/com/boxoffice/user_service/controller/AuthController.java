@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -45,5 +42,18 @@ public class AuthController {
         responseData.put("accessToken", accessToken);
 
         return ResponseEntity.ok(ApiResponse.success(responseData));
+    }
+
+    // 🌟 사용자 로그아웃 API
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            // Gateway가 넘겨주는 원래의 Authorization 헤더 전체를 받습니다.
+            @RequestHeader("Authorization") String authHeader) {
+
+        log.info("[Controller] 로그아웃 요청.");
+
+        userService.logout(authHeader);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

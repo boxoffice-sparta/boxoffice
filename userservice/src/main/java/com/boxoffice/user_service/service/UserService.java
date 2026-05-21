@@ -13,19 +13,25 @@ import com.boxoffice.user_service.entity.User;
 import com.boxoffice.user_service.entity.UserStatus;
 import com.boxoffice.user_service.exception.UserErrorCode; // 하단에 추가할 ErrorCode
 import com.boxoffice.user_service.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Pageable;
+
+import java.util.Base64;
 import java.util.UUID;
 
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -48,7 +54,10 @@ public class UserService {
     private String adminClientId;
 
     @Value("${keycloak.client-id:boxoffice-app}")
-    private String userClientId; // 우리가 Keycloak에 만든 Public 클라이언트 ID
+    private String userClientId;
+
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional
     public void signUp(UserSignupRequestDto request) {
@@ -263,5 +272,39 @@ public class UserService {
         targetUser.updateStatus(UserStatus.DELETED);
 
         log.info("[UserDelete] 유저 논리적 삭제 완료. TargetUserId: {}", targetUserId);
+    }
+
+    /**
+     * 🌟 사용자 로그아웃 (Redis 블랙리스트 등록)
+     */
+    public void logout(String authHeader) {
+        // 1. 헤더에서 토큰만 추출 ("Bearer " 제거)
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new BaseException(CommonErrorCode.INVALID_INPUT); // 잘못된 헤더
+        }
+        String token = authHeader.substring(7);
+
+        try {
+            // 2. 토큰의 Payload(내용물) 뜯기 (Gateway에서 했던 방식과 동일!)
+            String[] chunks = token.split("\\.");
+            String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+            JsonNode jsonNode = objectMapper.readTree(payload);
+
+            // 3. 토큰의 만료 시간(exp) 추출
+            // JWT의 exp는 '초(second)' 단위이므로 밀리초로 변환합니다.
+            long exp = jsonNode.path("exp").asLong() * 1000;
+            long now = System.currentTimeMillis();
+            long remainingTime = exp - now;
+
+            // 4. 아직 만료되지 않았다면 Redis에 블랙리스트로 등록 (TTL 설정)
+            if (remainingTime > 0) {
+                // 키: 토큰 값 자체, 값: "logout", 만료시간: 토큰의 남은 수명
+                redisTemplate.opsForValue().set(token, "logout", remainingTime, TimeUnit.MILLISECONDS);
+                log.info("[Logout] 토큰이 Redis 블랙리스트에 등록되었습니다. 남은 수명: {}ms", remainingTime);
+            }
+        } catch (Exception e) {
+            log.error("[Logout] 토큰 파싱 에러 발생: {}", e.getMessage());
+            throw new BaseException(CommonErrorCode.UNAUTHORIZED);
+        }
     }
 }
