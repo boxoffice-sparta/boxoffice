@@ -1,0 +1,49 @@
+package boxoffice.deliveryservice.domain.deliveryroute.entity;
+
+import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
+import com.boxoffice.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Entity
+@Getter
+@Table(name = "p_delivery_routes")
+@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
+public class DeliveryRoute extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_id")
+    private Delivery delivery;
+
+    @NotNull
+    private UUID originHubId;
+
+    @NotNull
+    private UUID destinationHubId;
+
+    @NotNull
+    private UUID hubDeliveryPersonId;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private DeliveryRouteStatus status;
+
+    @NotNull
+    private Long expectedDistance;
+
+    @NotNull
+    private Integer expectedDuration;
+
+    private Long actualDistance;
+    private Integer actualDuration;
+    private Integer sequence;
+}
+
