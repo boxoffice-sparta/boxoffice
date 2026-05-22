@@ -94,4 +94,15 @@ public class UserController {
         UserResponseDto response = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @Operation(
+            summary = "[Internal] Keycloak Sub 기반 유저 조회 (FeignClient 전용)",
+            description = "타 서비스가 Gateway에서 전파받은 X-User-Id 헤더(Keycloak Sub)를 그대로 사용하여 유저 정보와 companyId를 조회하는 API입니다."
+    )
+    @GetMapping("/keycloak/{keycloakSub}")
+    public ResponseEntity<ApiResponse<UserResponseDto>> getUserBySub(@PathVariable String keycloakSub) {
+        log.info("[Internal Controller] Keycloak Sub 기반 유저 조회 요청 수신. Sub: {}", keycloakSub);
+        UserResponseDto response = userService.getUserBySub(keycloakSub);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

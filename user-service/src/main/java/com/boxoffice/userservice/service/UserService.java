@@ -288,4 +288,18 @@ public class UserService {
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
         return UserResponseDto.from(user);
     }
+
+    /**
+     * 🌟 [Internal] 타 서비스용 유저 단건 조회 (Keycloak Sub 기반)
+     * 다른 서비스가 Gateway에서 전달받은 X-User-Id(sub) 값을 그대로 사용하여 조회할 수 있게 합니다.
+     */
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserBySub(String keycloakSub) {
+        User user = userRepository.findByKeycloakSub(keycloakSub)
+                .orElseThrow(() -> {
+                    log.error("[Internal Search] 존재하지 않는 Keycloak Sub 조회 시도. Sub: {}", keycloakSub);
+                    return new BaseException(UserErrorCode.USER_NOT_FOUND);
+                });
+        return UserResponseDto.from(user);
+    }
 }
