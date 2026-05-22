@@ -21,13 +21,13 @@ services:
   # ─── 여기 아래부터 우리 애플리케이션 코드를 도커로 연결하는 설정입니다 ───
   
   eureka-server:
-    build: ./eurekaserver
+    build: ./eureka-server
     container_name: boxoffice-eureka
     ports:
       - "8761:8761"
 
   api-gateway:
-    build: ./apigateway
+    build: ./api-gateway
     container_name: boxoffice-gateway
     ports:
       - "8080:8080"
@@ -37,7 +37,7 @@ services:
       - eureka-server
 
   user-service:
-    build: ./userservice
+    build: ./user-service
     container_name: boxoffice-user-service
     ports:
       - "8081:8081"
@@ -49,7 +49,7 @@ services:
 
   # 6. 배송 담당자 서비스
   delivery-manager-service:
-    build: ./deliverymanagerservice
+    build: ./deliver-ymanager-service
     container_name: boxoffice-delivery-manager
     ports:
       - "8086:8086"
