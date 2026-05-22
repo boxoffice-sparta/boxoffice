@@ -25,3 +25,10 @@ spring:
       hibernate:
         format_sql: true
         default_schema: notification_schema
+
+notification:
+  dispatch:
+    max-attempts: 3
+  recovery:
+    stale-after: PT5M
+    interval-ms: 60000

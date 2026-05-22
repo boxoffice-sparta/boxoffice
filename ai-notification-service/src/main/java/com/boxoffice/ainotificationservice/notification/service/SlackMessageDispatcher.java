@@ -13,7 +13,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 // PENDING 커밋 후 Slack 발송 + 결과 상태 전이.
 // 트랜잭션 X — DB 작업은 SlackMessageOperations에 위임, 외부 API 호출은 트랜잭션 밖에서 수행.
-// 시도 한도 정책은 Operations.applyResult가 담당.
 @Component
 @RequiredArgsConstructor
 public class SlackMessageDispatcher {
@@ -26,18 +25,18 @@ public class SlackMessageDispatcher {
     public void onQueued(SlackMessageQueuedEvent event) {
         LocalDateTime now = LocalDateTime.now(clock);
         DispatchSnapshot snapshot = operations.markSending(event.messageId(), now);
-
-        SendResult result = client.send(new SendRequest(snapshot.recipient(), snapshot.body()));
-        operations.applyResult(event.messageId(), result, now);
+        sendAndApply(event.messageId(), snapshot, now);
     }
 
     // 잔존 복구 워커가 호출. 재시도 불가 상태(이미 처리됨)는 skip.
     public void retry(UUID messageId) {
         LocalDateTime now = LocalDateTime.now(clock);
         operations.markSendingIfRetryable(messageId, now)
-                .ifPresent(snapshot -> {
-                    SendResult result = client.send(new SendRequest(snapshot.recipient(), snapshot.body()));
-                    operations.applyResult(messageId, result, now);
-                });
+                .ifPresent(snapshot -> sendAndApply(messageId, snapshot, now));
+    }
+
+    private void sendAndApply(UUID messageId, DispatchSnapshot snapshot, LocalDateTime now) {
+        SendResult result = client.send(new SendRequest(snapshot.recipient(), snapshot.body()));
+        operations.applyResult(messageId, result, now);
     }
 }
