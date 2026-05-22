@@ -5,7 +5,7 @@ spring:
   application:
     name: hub-service
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
