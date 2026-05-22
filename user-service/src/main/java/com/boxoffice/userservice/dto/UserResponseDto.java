@@ -15,6 +15,8 @@ public class UserResponseDto {
     private String hubId;
     private String status;
 
+    private UUID companyId;
+
     public static UserResponseDto from(User user) {
         return UserResponseDto.builder()
                 .id(user.getId())
@@ -22,6 +24,7 @@ public class UserResponseDto {
                 .name(user.getName())
                 .role(user.getRole().name())
                 .hubId(user.getHubId())
+                .companyId(user.getCompanyId())
                 .status(user.getStatus().name())
                 .build();
     }

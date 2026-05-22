@@ -4,6 +4,7 @@ import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.userservice.dto.UserResponseDto;
 import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
 import com.boxoffice.userservice.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,13 +41,12 @@ public class UserController {
 
         UserResponseDto responseDto = userService.getMyInfo(userId);
 
-        // 팀원의 공통 규격인 ApiResponse.success()를 사용하여 이쁘게 래핑
         return ResponseEntity.ok(ApiResponse.success(responseDto));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<UserResponseDto>>> getUserList(
-            @RequestHeader("X-User-Id") String requesterId, // 🌟 문지기가 꽂아준 명찰 받기!
+            @RequestHeader("X-User-Id") String requesterId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         log.info("[Controller] 사용자 목록 조회 요청. RequesterId: {}, Page: {}", requesterId, pageable.getPageNumber());
@@ -60,7 +60,7 @@ public class UserController {
     // 🌟 가입 승인/거절 API
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<UserResponseDto>> updateUserStatus(
-            @PathVariable UUID id, // 🌟 Long -> UUID 로 변경!
+            @PathVariable UUID id,
             @RequestHeader("X-User-Id") String requesterId,
             @RequestBody UserStatusUpdateRequestDto request) {
 
@@ -82,5 +82,16 @@ public class UserController {
         userService.deleteUser(id, requesterId);
 
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @Operation(
+            summary = "[Internal] 유저 단건 조회 (FeignClient 통신용)",
+            description = "타 마이크로서비스에서 유저의 companyId 등을 조회하기 위해 사용하는 내부 서버 간 통신 전용 API입니다. (프론트엔드 호출 금지)"
+    )
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable UUID id) {
+        log.info("[Internal Controller] 타 서비스로부터 유저 조회 요청 수신. UserId: {}", id);
+        UserResponseDto response = userService.getUserById(id);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

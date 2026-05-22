@@ -1,6 +1,6 @@
 package com.boxoffice.userservice.exception;
 
-import com.boxoffice.common.exception.ErrorCode; // 팀원의 공통 인터페이스 임포트
+import com.boxoffice.common.exception.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

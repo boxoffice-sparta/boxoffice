@@ -62,7 +62,6 @@ public class UserService {
 
     @Transactional
     public void signUp(UserSignupRequestDto request) {
-        // 1. 중복 이메일 검증
         if (userRepository.findByEmailValue(request.getEmail()).isPresent()) {
             log.warn("[Signup] 중복 회원가입 시도 차단. Email: {}", request.getEmail());
             throw new BaseException(UserErrorCode.DUPLICATE_EMAIL);
@@ -278,5 +277,15 @@ public class UserService {
             log.error("[Logout] 토큰 파싱 에러 발생: {}", e.getMessage());
             throw new BaseException(CommonErrorCode.UNAUTHORIZED);
         }
+    }
+
+    /**
+     * 🌟 외부 마이크로서비스(주문 등) 통신용 유저 단건 조회 (ID 기반)
+     */
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserById(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+        return UserResponseDto.from(user);
     }
 }

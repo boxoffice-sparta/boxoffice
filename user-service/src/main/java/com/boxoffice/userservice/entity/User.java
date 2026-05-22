@@ -1,8 +1,9 @@
 package com.boxoffice.userservice.entity;
 
-import com.boxoffice.common.entity.BaseEntity; // 공통 모듈 상속
+import com.boxoffice.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Entity
 @Table(name = "p_users")
@@ -30,6 +31,9 @@ public class User extends BaseEntity {
     @Column(name = "hub_id", nullable = true)
     private String hubId;
 
+    @Column(name = "company_id", nullable = true)
+    private UUID companyId;
+
     @Builder
     public User(String keycloakSub, Email email, String name, UserRole role, UserStatus status, String hubId) {
         this.keycloakSub = keycloakSub;
@@ -42,5 +46,9 @@ public class User extends BaseEntity {
 
     public void updateStatus(UserStatus newStatus) {
         this.status = newStatus;
+    }
+
+    public void updateCompany(UUID companyId) {
+        this.companyId = companyId;
     }
 }
