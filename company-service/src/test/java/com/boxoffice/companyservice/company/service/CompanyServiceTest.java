@@ -1,11 +1,14 @@
 package com.boxoffice.companyservice.company.service;
 
 import com.boxoffice.common.entity.AddressVO;
+import com.boxoffice.common.exception.BaseException;
 import com.boxoffice.companyservice.company.dto.request.AddressRequestDto;
 import com.boxoffice.companyservice.company.dto.request.CompanyCreateRequestDto;
 import com.boxoffice.companyservice.company.dto.response.CompanyCreateResponseDto;
+import com.boxoffice.companyservice.company.dto.response.CompanyResponseDto;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
+import com.boxoffice.companyservice.company.exception.CompanyErrorCode;
 import com.boxoffice.companyservice.company.repository.CompanyRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,9 +19,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -83,6 +88,55 @@ class CompanyServiceTest {
         assertThat(response.getAddress().getZipCode()).isEqualTo("12345");
         assertThat(response.getAddress().getAddress()).isEqualTo("경기도 고양시 덕양구 권율대로 570");
         assertThat(response.getAddress().getDetailAddress()).isEqualTo("101호");
+    }
+
+    @Test
+    @DisplayName("성공 - 업체 ID로 업체를 조회하고 상세 응답으로 반환한다")
+    void getCompanyReturnsCompanyResponse() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+        Company company = Company.create(
+                "테스트 업체",
+                CompanyType.SUPPLIER,
+                hubId,
+                new AddressVO("12345", "경기도 고양시 덕양구 권율대로 570", "101호")
+        );
+        ReflectionTestUtils.setField(company, "id", companyId);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when
+        CompanyResponseDto response = companyService.getCompany(companyId);
+
+        // then
+        verify(companyRepository).findById(companyId);
+        verifyNoMoreInteractions(companyRepository);
+
+        assertThat(response.getCompanyId()).isEqualTo(companyId);
+        assertThat(response.getName()).isEqualTo("테스트 업체");
+        assertThat(response.getType()).isEqualTo(CompanyType.SUPPLIER);
+        assertThat(response.getHubId()).isEqualTo(hubId);
+        assertThat(response.getAddress().getZipCode()).isEqualTo("12345");
+        assertThat(response.getAddress().getAddress()).isEqualTo("경기도 고양시 덕양구 권율대로 570");
+        assertThat(response.getAddress().getDetailAddress()).isEqualTo("101호");
+    }
+
+    @Test
+    @DisplayName("실패 - 업체 ID에 해당하는 업체가 없으면 not found 예외를 반환한다")
+    void getCompanyWithUnknownCompanyIdThrowsNotFound() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        when(companyRepository.findById(companyId)).thenReturn(Optional.empty());
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyService.getCompany(companyId));
+
+        // then
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CompanyErrorCode.COMPANY_NOT_FOUND));
+        verify(companyRepository).findById(companyId);
+        verifyNoMoreInteractions(companyRepository);
     }
 
     // setter 없는 요청 DTO를 테스트 입력값으로 구성한다.

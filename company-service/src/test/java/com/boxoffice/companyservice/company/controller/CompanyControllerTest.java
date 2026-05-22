@@ -5,6 +5,7 @@ import com.boxoffice.common.exception.BaseException;
 import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.common.exception.GlobalExceptionHandler;
 import com.boxoffice.companyservice.company.dto.response.CompanyCreateResponseDto;
+import com.boxoffice.companyservice.company.dto.response.CompanyResponseDto;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
 import com.boxoffice.companyservice.company.service.CompanyFacade;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +41,50 @@ class CompanyControllerTest {
             .standaloneSetup(new CompanyController(companyFacade))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
+
+    @Test
+    @DisplayName("성공 - GET /api/v1/companies/{companyId} 요청 시 업체 상세 정보를 반환한다")
+    void getCompanyReturnsCompanyResponse() throws Exception {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+        CompanyResponseDto response = createCompanyResponse(companyId, hubId);
+
+        when(companyFacade.getCompany(companyId, "MASTER")).thenReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies/{companyId}", companyId)
+                        .header("X-User-Role", "MASTER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is(200)))
+                .andExpect(jsonPath("$.message", is("SUCCESS")))
+                .andExpect(jsonPath("$.data.companyId", is(companyId.toString())))
+                .andExpect(jsonPath("$.data.name", is("테스트 업체")))
+                .andExpect(jsonPath("$.data.type", is("SUPPLIER")))
+                .andExpect(jsonPath("$.data.hubId", is(hubId.toString())))
+                .andExpect(jsonPath("$.data.address.address", is("경기도 고양시 덕양구 권율대로 570")));
+
+        verify(companyFacade).getCompany(companyId, "MASTER");
+        verifyNoMoreInteractions(companyFacade);
+    }
+
+    @Test
+    @DisplayName("실패 - 상세 조회 시 X-User-Role 헤더가 없으면 401 인증 실패를 반환한다")
+    void getCompanyWithoutUserRoleHeaderReturnsUnauthorized() throws Exception {
+        // given
+        UUID companyId = UUID.randomUUID();
+        when(companyFacade.getCompany(companyId, null))
+                .thenThrow(new BaseException(CommonErrorCode.UNAUTHORIZED));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies/{companyId}", companyId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.message", is(CommonErrorCode.UNAUTHORIZED.getCode())));
+
+        verify(companyFacade).getCompany(companyId, null);
+        verifyNoMoreInteractions(companyFacade);
+    }
 
     @Test
     @DisplayName("성공 - POST /api/v1/companies 요청 시 201 Created와 companyId를 반환한다")
@@ -155,6 +201,17 @@ class CompanyControllerTest {
         // BaseEntity id는 JPA 저장 시 생성되므로 컨트롤러 테스트에서는 응답용 id만 주입한다.
         ReflectionTestUtils.setField(company, "id", companyId);
         return CompanyCreateResponseDto.from(company);
+    }
+
+    private CompanyResponseDto createCompanyResponse(UUID companyId, UUID hubId) {
+        Company company = Company.create(
+                "테스트 업체",
+                CompanyType.SUPPLIER,
+                hubId,
+                new AddressVO("12345", "경기도 고양시 덕양구 권율대로 570", "101호")
+        );
+        ReflectionTestUtils.setField(company, "id", companyId);
+        return CompanyResponseDto.from(company);
     }
 
     private String createRequestBody(UUID hubId) {

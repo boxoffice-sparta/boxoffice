@@ -29,7 +29,7 @@ public class CompanyController {
     @GetMapping("/{companyId}")
     public ResponseEntity<ApiResponse<CompanyResponseDto>> getCompany(
             @RequestHeader(value = "X-User-Role", required = false) String userRole,
-            @PathVariable UUID companyId
+            @PathVariable("companyId") UUID companyId
     ) {
         CompanyResponseDto response = companyFacade.getCompany(companyId, userRole);
 
