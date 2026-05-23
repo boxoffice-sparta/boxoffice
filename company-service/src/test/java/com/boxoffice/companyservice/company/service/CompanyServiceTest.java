@@ -8,6 +8,7 @@ import com.boxoffice.companyservice.company.dto.request.AddressRequestDto;
 import com.boxoffice.companyservice.company.dto.request.CompanyCreateRequestDto;
 import com.boxoffice.companyservice.company.dto.response.CompanyCreateResponseDto;
 import com.boxoffice.companyservice.company.dto.response.CompanyResponseDto;
+import com.boxoffice.companyservice.company.dto.search.CompanySearchCondition;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
 import com.boxoffice.companyservice.company.exception.CompanyErrorCode;
@@ -20,8 +21,13 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -216,6 +222,28 @@ class CompanyServiceTest {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(CompanyErrorCode.COMPANY_NOT_FOUND));
         verify(companyRepository).findById(companyId);
         verifyNoMoreInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("성공 - 검색 조건과 페이지로 업체를 검색하고 응답 DTO 페이지를 반환한다")
+    void searchCompaniesReturnsCompanyResponsePage() {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition("테스트", "SUPPLIER", UUID.randomUUID());
+        Pageable pageable = PageRequest.of(0, 10);
+        Company company = createCompany(UUID.randomUUID(), condition.getHubId());
+        Page<Company> companyPage = new PageImpl<>(List.of(company), pageable, 1);
+
+        when(companyRepository.searchCompanies(condition, CompanyType.SUPPLIER, pageable)).thenReturn(companyPage);
+
+        // when
+        Page<CompanyResponseDto> responsePage = companyService.searchCompanies(condition, CompanyType.SUPPLIER, pageable);
+
+        // then
+        verify(companyRepository).searchCompanies(condition, CompanyType.SUPPLIER, pageable);
+        verifyNoMoreInteractions(companyRepository);
+
+        assertThat(responsePage.getContent()).hasSize(1);
+        assertThat(responsePage.getContent().get(0).getName()).isEqualTo("테스트 업체");
     }
 
     private Company createCompany(UUID companyId, UUID hubId) {
