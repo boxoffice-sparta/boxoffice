@@ -17,10 +17,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.boxoffice.companyservice.company.dto.search.CompanySearchCondition;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -137,6 +143,35 @@ class CompanyServiceTest {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(CompanyErrorCode.COMPANY_NOT_FOUND));
         verify(companyRepository).findById(companyId);
         verifyNoMoreInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("성공 - 검색 조건과 페이징으로 업체를 검색하고 응답 DTO 페이지를 반환한다")
+    void searchCompaniesReturnsCompanyResponsePage() {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition("테스트", "SUPPLIER", UUID.randomUUID());
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Company company = Company.create(
+                "테스트 업체",
+                CompanyType.SUPPLIER,
+                condition.getHubId(),
+                new AddressVO("12345", "주소", "상세")
+        );
+        ReflectionTestUtils.setField(company, "id", UUID.randomUUID());
+
+        Page<Company> companyPage = new PageImpl<>(List.of(company), pageable, 1);
+        when(companyRepository.searchCompanies(condition, CompanyType.SUPPLIER, pageable)).thenReturn(companyPage);
+
+        // when
+        Page<CompanyResponseDto> responsePage = companyService.searchCompanies(condition, CompanyType.SUPPLIER, pageable);
+
+        // then
+        verify(companyRepository).searchCompanies(condition, CompanyType.SUPPLIER, pageable);
+        verifyNoMoreInteractions(companyRepository);
+
+        assertThat(responsePage.getContent()).hasSize(1);
+        assertThat(responsePage.getContent().get(0).getName()).isEqualTo("테스트 업체");
     }
 
     // setter 없는 요청 DTO를 테스트 입력값으로 구성한다.

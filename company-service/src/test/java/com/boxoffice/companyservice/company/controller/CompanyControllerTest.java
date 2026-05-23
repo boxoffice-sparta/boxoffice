@@ -6,18 +6,27 @@ import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.common.exception.GlobalExceptionHandler;
 import com.boxoffice.companyservice.company.dto.response.CompanyCreateResponseDto;
 import com.boxoffice.companyservice.company.dto.response.CompanyResponseDto;
+import com.boxoffice.companyservice.company.dto.search.CompanySearchCondition;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
 import com.boxoffice.companyservice.company.service.CompanyFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +48,7 @@ class CompanyControllerTest {
     private final CompanyFacade companyFacade = mock(CompanyFacade.class);
     private final MockMvc mockMvc = MockMvcBuilders
             .standaloneSetup(new CompanyController(companyFacade))
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
 
@@ -189,6 +199,124 @@ class CompanyControllerTest {
                 .andExpect(jsonPath("$.errors", hasItem("name: 업체명은 필수입니다.")));
 
         verifyNoInteractions(companyFacade);
+    }
+
+    @Test
+    @DisplayName("성공 - GET /api/v1/companies 요청 시 업체 검색 결과를 반환한다")
+    void searchCompaniesReturnsPageResponse() throws Exception {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID hubId = UUID.randomUUID();
+        CompanyResponseDto responseDto = createCompanyResponse(companyId, hubId);
+        Page<CompanyResponseDto> responsePage = new PageImpl<>(List.of(responseDto));
+
+        when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies")
+                        .header("X-User-Role", "MASTER")
+                        .param("name", "테스트")
+                        .param("type", "SUPPLIER")
+                        .param("hubId", hubId.toString())
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is(200)))
+                .andExpect(jsonPath("$.message", is("SUCCESS")))
+                .andExpect(jsonPath("$.data.content[0].companyId", is(companyId.toString())))
+                .andExpect(jsonPath("$.data.content[0].name", is("테스트 업체")))
+                .andExpect(jsonPath("$.data.totalElements", is(1)))
+                .andExpect(jsonPath("$.data.sort", is("createdAt,DESC")));
+
+        ArgumentCaptor<CompanySearchCondition> conditionCaptor = ArgumentCaptor.forClass(CompanySearchCondition.class);
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(companyFacade).searchCompanies(conditionCaptor.capture(), pageableCaptor.capture(), eq("MASTER"));
+        verifyNoMoreInteractions(companyFacade);
+
+        CompanySearchCondition condition = conditionCaptor.getValue();
+        assertThat(condition.getName()).isEqualTo("테스트");
+        assertThat(condition.getType()).isEqualTo("SUPPLIER");
+        assertThat(condition.getHubId()).isEqualTo(hubId);
+
+        Pageable capturedPageable = pageableCaptor.getValue();
+        assertThat(capturedPageable.getPageNumber()).isZero();
+        assertThat(capturedPageable.getPageSize()).isEqualTo(10);
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt").isDescending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("성공 - 업체 검색 시 updatedAt 정렬 기준을 Facade로 전달한다")
+    void searchCompaniesWithUpdatedAtSortPassesSortToFacade() throws Exception {
+        // given
+        Page<CompanyResponseDto> responsePage = Page.empty(PageRequest.of(0, 10));
+        when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies")
+                        .header("X-User-Role", "MASTER")
+                        .param("sort", "updatedAt,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sort", is("updatedAt,ASC")));
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(companyFacade).searchCompanies(any(), pageableCaptor.capture(), eq("MASTER"));
+        verifyNoMoreInteractions(companyFacade);
+
+        Pageable capturedPageable = pageableCaptor.getValue();
+        assertThat(capturedPageable.getSort().getOrderFor("updatedAt")).isNotNull();
+        assertThat(capturedPageable.getSort().getOrderFor("updatedAt").isAscending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("성공 - 업체 검색 조건이 없으면 기본 페이징과 정렬로 조회한다")
+    void searchCompaniesWithoutConditionUsesDefaultPageable() throws Exception {
+        // given
+        Page<CompanyResponseDto> responsePage = Page.empty(PageRequest.of(0, 10));
+        when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies")
+                        .header("X-User-Role", "MASTER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page", is(0)))
+                .andExpect(jsonPath("$.data.size", is(10)))
+                .andExpect(jsonPath("$.data.sort", is("createdAt,DESC")));
+
+        ArgumentCaptor<CompanySearchCondition> conditionCaptor = ArgumentCaptor.forClass(CompanySearchCondition.class);
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(companyFacade).searchCompanies(conditionCaptor.capture(), pageableCaptor.capture(), eq("MASTER"));
+        verifyNoMoreInteractions(companyFacade);
+
+        CompanySearchCondition condition = conditionCaptor.getValue();
+        assertThat(condition.getName()).isNull();
+        assertThat(condition.getType()).isNull();
+        assertThat(condition.getHubId()).isNull();
+
+        Pageable capturedPageable = pageableCaptor.getValue();
+        assertThat(capturedPageable.getPageNumber()).isZero();
+        assertThat(capturedPageable.getPageSize()).isEqualTo(10);
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt").isDescending()).isTrue();
+    }
+
+    @Test
+    @DisplayName("실패 - 검색 시 type 파라미터에 잘못된 Enum 값이 들어오면 400 Bad Request를 반환한다")
+    void searchCompaniesWithInvalidTypeReturnsBadRequest() throws Exception {
+        // given
+        when(companyFacade.searchCompanies(any(), any(), eq("MASTER")))
+                .thenThrow(new BaseException(CommonErrorCode.INVALID_INPUT));
+
+        // when & then
+        mockMvc.perform(get("/api/v1/companies")
+                        .header("X-User-Role", "MASTER")
+                        .param("type", "INVALID_TYPE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.message", is(CommonErrorCode.INVALID_INPUT.getCode())));
+
+        verify(companyFacade).searchCompanies(any(), any(), eq("MASTER"));
+        verifyNoMoreInteractions(companyFacade);
     }
 
     private CompanyCreateResponseDto createResponse(UUID companyId, UUID hubId) {
