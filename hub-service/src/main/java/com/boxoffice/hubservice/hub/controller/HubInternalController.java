@@ -1,0 +1,44 @@
+package com.boxoffice.hubservice.hub.controller;
+
+import com.boxoffice.common.response.ApiResponse;
+import com.boxoffice.hubservice.hub.dto.request.HubAssignManagerRequestDto;
+import com.boxoffice.hubservice.hub.dto.response.HubGetResponseDto;
+import com.boxoffice.hubservice.hub.service.HubService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/internal/hubs")
+@RequiredArgsConstructor
+public class HubInternalController {
+
+    private final HubService hubService;
+
+    @GetMapping("/{hubId}")
+    public ResponseEntity<ApiResponse<HubGetResponseDto>> getHub(
+            @PathVariable UUID hubId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hubService.getHub(hubId)));
+    }
+
+    @GetMapping("/{hubId}/active")
+    public ResponseEntity<ApiResponse<HubGetResponseDto>> getActiveHub(
+            @PathVariable UUID hubId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hubService.getActiveHub(hubId)));
+    }
+
+    @PatchMapping("/{hubId}/manager")
+    public ResponseEntity<ApiResponse<HubGetResponseDto>> assignManager(
+            @PathVariable UUID hubId,
+            @Valid @RequestBody HubAssignManagerRequestDto request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                hubService.assignManager(hubId, request.managerId())));
+    }
+}
+
