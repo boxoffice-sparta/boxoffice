@@ -68,4 +68,15 @@ public class HubRouteController {
         return ResponseEntity.ok(ApiResponse.success(hubRouteService.updateHubRoute(routeId, request)));
     }
 
+    @DeleteMapping("/{routeId}")
+    public ResponseEntity<Void> deleteHubRoute(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID routeId
+    ) {
+        if (!"MASTER".equals(role)) {
+            throw new BaseException(CommonErrorCode.FORBIDDEN);
+        }
+        hubRouteService.deleteHubRoute(routeId);
+        return ResponseEntity.noContent().build();
+    }
 }
