@@ -5,6 +5,8 @@ public enum HubType {
     CENTRAL,
     /** 일반 허브 - 각 지역 센터 (14개) */
     REGIONAL,
-    /** 운영 중단 - 신규 배송 배정 불가 */
+    /** 운영 마감 - 신규 배송 배정 불가 및 기존 배송 중인 것들 처리 */
+    CLOSING,
+    /** 운영 중단 - 재고 이전 처리 */
     INACTIVE
 }
