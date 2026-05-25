@@ -16,6 +16,7 @@ public record HubCreateResponseDto(
         Double longitude,
         HubType hubType,
         UUID managerId,
+        Integer capacity,
         LocalDateTime createdAt,
         UUID createdBy
 ) {
@@ -30,6 +31,7 @@ public record HubCreateResponseDto(
                 hub.getCoordinate().getLongitude(),
                 hub.getHubType(),
                 hub.getManagerId(),
+                hub.getCapacity(),
                 hub.getCreatedAt(),
                 hub.getCreatedBy()
         );
