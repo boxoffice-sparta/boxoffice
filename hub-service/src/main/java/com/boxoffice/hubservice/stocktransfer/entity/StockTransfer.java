@@ -10,9 +10,13 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -47,13 +51,32 @@ public class StockTransfer extends BaseEntity {
     @Column(name = "note", length = 500)
     private String note;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "company_ids", columnDefinition = "jsonb")
+    private List<UUID> companyIds = new ArrayList<>();
+
+    @Column(name = "delivery_manager_id")
+    private UUID deliveryManagerId;
+
     @Builder
-    private StockTransfer(UUID fromHubId, UUID toHubId, Integer totalProductCount, UUID managerId) {
+    private StockTransfer(UUID fromHubId, UUID toHubId, Integer totalProductCount,
+                          UUID managerId, List<UUID> companyIds) {
         this.fromHubId = fromHubId;
         this.toHubId = toHubId;
         this.totalProductCount = totalProductCount;
         this.managerId = managerId;
         this.status = TransferStatus.PENDING;
+        this.companyIds = companyIds != null ? companyIds : new ArrayList<>();
+    }
+
+    public void assignDeliveryManager(UUID deliveryManagerId) {
+        this.deliveryManagerId = deliveryManagerId;
+    }
+
+    public void revertDispatch() {
+        this.status = TransferStatus.PENDING;
+        this.dispatchedAt = null;
+        this.deliveryManagerId = null;
     }
 
     public void dispatch() {
