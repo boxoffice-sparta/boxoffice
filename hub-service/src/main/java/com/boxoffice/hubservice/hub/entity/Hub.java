@@ -37,12 +37,16 @@ public class Hub extends BaseEntity {
     @Column(name = "closing_reason", length = 500)
     private String closingReason;
 
+    @Column(name = "capacity")
+    private Integer capacity;
+
     @Builder
-    private Hub(String name, AddressVO address, CoordinateVO coordinate, HubType hubType) {
+    private Hub(String name, AddressVO address, CoordinateVO coordinate, HubType hubType, Integer capacity) {
         this.name = name;
         this.address = address;
         this.coordinate = coordinate;
         this.hubType = hubType;
+        this.capacity = capacity;
     }
 
     public void update(String name, AddressVO address, CoordinateVO coordinate) {

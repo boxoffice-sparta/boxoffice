@@ -29,5 +29,7 @@ public record HubCreateRequestDto(
         Double longitude,
 
         @NotNull(message = "허브 타입은 필수입니다.")
-        HubType hubType
+        HubType hubType,
+
+        Integer capacity
 ) {}
