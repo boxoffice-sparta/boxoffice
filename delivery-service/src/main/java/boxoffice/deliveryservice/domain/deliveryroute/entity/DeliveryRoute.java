@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -29,7 +30,6 @@ public class DeliveryRoute extends BaseEntity {
     @NotNull
     private UUID destinationHubId;
 
-    @NotNull
     private UUID hubDeliveryPersonId;
 
     @NotNull
@@ -37,12 +37,12 @@ public class DeliveryRoute extends BaseEntity {
     private DeliveryRouteStatus status;
 
     @NotNull
-    private Long expectedDistance;
+    private BigDecimal expectedDistance;
 
     @NotNull
     private Integer expectedDuration;
 
-    private Long actualDistance;
+    private BigDecimal actualDistance;
     private Integer actualDuration;
     private Integer sequence;
 }
