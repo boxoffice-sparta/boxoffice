@@ -1,6 +1,7 @@
 package com.boxoffice.userservice.controller;
 
 import com.boxoffice.common.response.ApiResponse;
+import com.boxoffice.userservice.dto.UserCompanyUpdateRequestDto;
 import com.boxoffice.userservice.dto.UserResponseDto;
 import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
 import com.boxoffice.userservice.service.UserService;
@@ -92,5 +93,15 @@ public class UserController {
         log.info("[Internal Controller] Keycloak Sub 기반 유저 조회 요청 수신. Sub: {}", keycloakSub);
         UserResponseDto response = userService.getUserBySub(keycloakSub);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+
+    @PatchMapping("/internal/users/{userId}/company")
+    public ResponseEntity<UserResponseDto> updateUserCompany(
+            @PathVariable("userId") UUID userId,
+            @RequestBody UserCompanyUpdateRequestDto request) {
+
+        UserResponseDto response = userService.updateUserCompany(userId, request);
+        return ResponseEntity.ok(response);
     }
 }

@@ -6,10 +6,7 @@ import com.boxoffice.userservice.client.HubServiceClient;
 import com.boxoffice.userservice.client.KeycloakClient;
 import com.boxoffice.userservice.client.dto.HubManagerRegisterRequestDto;
 import com.boxoffice.userservice.client.dto.KeycloakUserCreateRequestDto;
-import com.boxoffice.userservice.dto.UserLoginRequestDto;
-import com.boxoffice.userservice.dto.UserResponseDto;
-import com.boxoffice.userservice.dto.UserSignupRequestDto;
-import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
+import com.boxoffice.userservice.dto.*;
 import com.boxoffice.userservice.entity.Email;
 import com.boxoffice.userservice.entity.User;
 import com.boxoffice.userservice.entity.UserRole;
@@ -301,5 +298,21 @@ public class UserService {
                     return new BaseException(UserErrorCode.USER_NOT_FOUND);
                 });
         return UserResponseDto.from(user);
+    }
+
+    @Transactional
+    public UserResponseDto updateUserCompany(UUID targetUserId, UserCompanyUpdateRequestDto request) {
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        if (targetUser.getRole() != UserRole.SUPPLIER_MANAGER) {
+            log.warn("[UserCompanyUpdate] 매핑 실패: 대상 유저가 SUPPLIER_MANAGER가 아닙니다. UserId: {}, Role: {}", targetUserId, targetUser.getRole());
+            throw new BaseException(CommonErrorCode.INVALID_INPUT); // 또는 UserErrorCode에 권한 불일치 에러 추가
+        }
+
+        targetUser.updateCompany(request.getCompanyId());
+        log.info("[UserCompanyUpdate] 유저 업체 매핑 완료. UserId: {}, CompanyId: {}", targetUserId, request.getCompanyId());
+
+        return UserResponseDto.from(targetUser);
     }
 }
