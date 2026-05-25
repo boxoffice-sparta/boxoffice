@@ -100,7 +100,7 @@ public class HubService {
         }
 
         CoordinateVO coordinate = null;
-        if (request.latitude() != null || request.longitude() != null) {
+        if (request.latitude() != null && request.longitude() != null) {
             coordinate = new CoordinateVO(request.latitude(), request.longitude());
         }
 
