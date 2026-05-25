@@ -104,7 +104,7 @@ public class HubService {
             coordinate = new CoordinateVO(request.latitude(), request.longitude());
         }
 
-        hub.update(request.name(), address, coordinate);
+        hub.update(request.name(), address, coordinate, request.capacity());
         return HubGetResponseDto.from(hub);
     }
 
