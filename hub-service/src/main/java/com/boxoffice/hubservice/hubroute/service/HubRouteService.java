@@ -15,6 +15,7 @@ import com.boxoffice.hubservice.hubroute.entity.HubRoute;
 import com.boxoffice.hubservice.hubroute.repository.HubRouteRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -104,6 +105,7 @@ public class HubRouteService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "hub-routes", allEntries = true)
     public HubRouteGetResponseDto updateHubRoute(UUID routeId, HubRouteUpdateRequestDto request) {
         HubRoute route = hubRouteRepository.findById(routeId)
                 .orElseThrow(() -> new BaseException(HubErrorCode.HUB_ROUTE_NOT_FOUND));
