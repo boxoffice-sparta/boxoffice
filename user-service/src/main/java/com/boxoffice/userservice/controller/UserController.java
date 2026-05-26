@@ -3,8 +3,10 @@ package com.boxoffice.userservice.controller;
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.userservice.dto.UserCompanyUpdateRequestDto;
 
+import com.boxoffice.userservice.dto.UserHubUpdateRequestDto;
 import com.boxoffice.userservice.dto.UserResponseDto;
 import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
+import com.boxoffice.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +75,19 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    @PatchMapping("/{userId}/hub")
+    public ResponseEntity<ApiResponse<Void>> updateUserHub(
+            @PathVariable("userId") UUID userId,
+            @RequestBody UserHubUpdateRequestDto request,
+            @RequestHeader("X-User-Role") String role) {
+
+        log.info("[Controller] 허브 관리자 소속 허브 변경 요청 수신. UserId: {}, NewHubId: {}, Role: {}", userId, request.getHubId(), role);
+
+        userService.updateUserHub(userId, request.getHubId(), role);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @Operation(
             summary = "[Internal] 유저 단건 조회 (FeignClient 통신용)",
             description = "타 마이크로서비스에서 유저의 companyId 등을 조회하기 위해 사용하는 내부 서버 간 통신 전용 API입니다. (프론트엔드 호출 금지)"
@@ -103,5 +118,16 @@ public class UserController {
 
         UserResponseDto response = userService.updateUserCompany(userId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/internal/clear-hub/{hubId}")
+    public ResponseEntity<ApiResponse<Void>> clearUserHubId(
+            @PathVariable("hubId") UUID hubId) {
+
+        log.info("[Controller] [Internal] 허브 삭제에 따른 유저 hubId 일괄 초기화 요청 수신. TargetHubId: {}", hubId);
+
+        userService.clearUserHubId(hubId);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

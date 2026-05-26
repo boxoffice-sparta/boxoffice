@@ -318,4 +318,26 @@ public class UserService {
 
         return UserResponseDto.from(targetUser);
     }
+
+    @Transactional
+    public void updateUserHub(UUID userId, UUID newHubId, String role) {
+        if (!"MASTER".equals(role)) {
+            throw new BaseException(UserErrorCode.FORBIDDEN_ACCESS);
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        user.updateHub(newHubId);
+        log.info("[UserHubUpdate] 유저 허브 변경 완료. UserId: {}, NewHubId: {}", userId, newHubId);
+    }
+
+    @Transactional
+    public void clearUserHubId(UUID hubId) {
+        log.info("[UserHubClear] 허브 삭제에 따른 유저 hubId 일괄 초기화 시작. TargetHubId: {}", hubId);
+
+        userRepository.clearHubIdByHubId(hubId);
+
+        log.info("[UserHubClear] 유저 hubId 일괄 초기화 완료. TargetHubId: {}", hubId);
+    }
 }

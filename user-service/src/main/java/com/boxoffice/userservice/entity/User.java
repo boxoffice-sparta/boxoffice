@@ -55,4 +55,8 @@ public class User extends BaseEntity {
     public void updateCompany(UUID companyId) {
         this.companyId = companyId;
     }
+
+    public void updateHub(UUID newHubId) {
+        this.hubId = newHubId;
+    }
 }
