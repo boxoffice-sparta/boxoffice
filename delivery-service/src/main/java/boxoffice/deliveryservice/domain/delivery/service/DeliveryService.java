@@ -4,6 +4,10 @@ import boxoffice.deliveryservice.client.HubClient;
 import boxoffice.deliveryservice.client.UserServiceClient;
 import boxoffice.deliveryservice.client.dto.response.UserInfoDto;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.delivery.exception.DeliveryErrorCode;
@@ -97,8 +101,63 @@ public class DeliveryService {
         return deliveryRouteService.getRouteByDelivery(deliveryId, routeId);
     }
 
+    public DeliveryResponseDto updateDelivery(String keycloakSub, UUID deliveryId, DeliveryUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateInfo(request.recipientName(), request.recipientSlackId(), request.deliveryAddress().toAddressVO());
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    public DeliveryResponseDto updateDeliveryStatus(String keycloakSub, UUID deliveryId, DeliveryStatusUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateStatus(request.status());
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRoute(routeId, deliveryId, request);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRouteStatus(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteStatusUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRouteStatus(routeId, deliveryId, request);
+    }
+
+    private Delivery findDeliveryOrThrow(UUID deliveryId) {
+        return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+    }
+
     private UserInfoDto getUserInfo(String keycloakSub) {
         return userServiceClient.getUserBySub(keycloakSub).getData();
+    }
+
+    private void checkWriteAccess(Delivery delivery, UserInfoDto userInfo) {
+        switch (userInfo.role()) {
+            case MASTER -> {}
+            case HUB_MANAGER -> {
+                if (userInfo.hubId() == null ||
+                    (!userInfo.hubId().equals(delivery.getOriginHubId()) &&
+                     !userInfo.hubId().equals(delivery.getDestinationHubId()))) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            case DELIVERY_MANAGER -> {
+                if (delivery.getDeliveryPersonId() == null ||
+                    !userInfo.id().equals(delivery.getDeliveryPersonId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            case SUPPLIER_MANAGER -> throw new BaseException(CommonErrorCode.FORBIDDEN);
+        }
     }
 
     private void checkDeliveryAccess(Delivery delivery, UserInfoDto userInfo) {

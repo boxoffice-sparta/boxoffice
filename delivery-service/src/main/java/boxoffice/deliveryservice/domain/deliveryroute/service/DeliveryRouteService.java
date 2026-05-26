@@ -2,6 +2,8 @@ package boxoffice.deliveryservice.domain.deliveryroute.service;
 
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubRouteSegmentDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRoute;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRouteStatus;
@@ -52,6 +54,20 @@ public class DeliveryRouteService {
     public DeliveryRouteResponseDto getRouteByDelivery(UUID deliveryId, UUID routeId) {
         DeliveryRoute route = deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId)
                 .orElseThrow(() -> new BaseException(DeliveryRouteErrorCode.DELIVERY_ROUTE_NOT_FOUND));
+        return DeliveryRouteResponseDto.from(route);
+    }
+
+    public DeliveryRouteResponseDto updateRoute(UUID routeId, UUID deliveryId, DeliveryRouteUpdateRequestDto request) {
+        DeliveryRoute route = deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryRouteErrorCode.DELIVERY_ROUTE_NOT_FOUND));
+        route.updateActual(request.actualDistance(), request.actualDuration());
+        return DeliveryRouteResponseDto.from(route);
+    }
+
+    public DeliveryRouteResponseDto updateRouteStatus(UUID routeId, UUID deliveryId, DeliveryRouteStatusUpdateRequestDto request) {
+        DeliveryRoute route = deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryRouteErrorCode.DELIVERY_ROUTE_NOT_FOUND));
+        route.updateStatus(request.status());
         return DeliveryRouteResponseDto.from(route);
     }
 }
