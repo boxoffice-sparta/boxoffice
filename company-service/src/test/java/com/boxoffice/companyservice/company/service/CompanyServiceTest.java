@@ -2,6 +2,7 @@ package com.boxoffice.companyservice.company.service;
 
 import com.boxoffice.common.entity.AddressVO;
 import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.companyservice.company.client.UserClient;
 import com.boxoffice.companyservice.company.client.dto.UserCompanyUpdateRequestDto;
 import com.boxoffice.companyservice.company.dto.request.AddressRequestDto;
@@ -327,6 +328,65 @@ class CompanyServiceTest {
                 .isInstanceOfSatisfying(BaseException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(CompanyErrorCode.COMPANY_NOT_FOUND));
         verify(companyRepository).findById(companyId);
+        verifyNoMoreInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("성공 - 허브 ID 기준 소속 업체 목록을 조회한다")
+    void getCompaniesByHubIdReturnsCompanies() {
+        // given
+        UUID hubId = UUID.randomUUID();
+        List<Company> companies = List.of(createCompany(UUID.randomUUID(), hubId));
+
+        when(companyRepository.findActiveCompaniesByHubId(hubId)).thenReturn(companies);
+
+        // when
+        List<Company> response = companyService.getCompaniesByHubId(hubId);
+
+        // then
+        verify(companyRepository).findActiveCompaniesByHubId(hubId);
+        verifyNoMoreInteractions(companyRepository);
+        assertThat(response).isSameAs(companies);
+    }
+
+    @Test
+    @DisplayName("성공 - 업체들의 소속 허브를 일괄 변경한다")
+    void transferCompaniesHubUpdatesCompanyHubId() {
+        // given
+        UUID toHubId = UUID.randomUUID();
+        UUID firstCompanyId = UUID.randomUUID();
+        UUID secondCompanyId = UUID.randomUUID();
+
+        when(companyRepository.bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId)).thenReturn(2L);
+
+        // when
+        companyService.transferCompaniesHub(List.of(firstCompanyId, secondCompanyId), toHubId);
+
+        // then
+        verify(companyRepository).bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId);
+        verifyNoMoreInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 벌크 허브 변경 건수가 요청 업체 수와 다르면 입력 오류로 처리한다")
+    void transferCompaniesHubWithMissingCompanyThrowsInvalidInput() {
+        // given
+        UUID toHubId = UUID.randomUUID();
+        UUID firstCompanyId = UUID.randomUUID();
+        UUID secondCompanyId = UUID.randomUUID();
+
+        when(companyRepository.bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId)).thenReturn(1L);
+
+        // when
+        Throwable throwable = catchThrowable(() ->
+                companyService.transferCompaniesHub(List.of(firstCompanyId, secondCompanyId), toHubId)
+        );
+
+        // then
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
+        verify(companyRepository).bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId);
         verifyNoMoreInteractions(companyRepository);
     }
 
