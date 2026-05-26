@@ -2,9 +2,9 @@ package com.boxoffice.userservice.controller;
 
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.userservice.dto.UserCompanyUpdateRequestDto;
+
 import com.boxoffice.userservice.dto.UserResponseDto;
 import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
-import com.boxoffice.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +78,7 @@ public class UserController {
             description = "타 마이크로서비스에서 유저의 companyId 등을 조회하기 위해 사용하는 내부 서버 간 통신 전용 API입니다. (프론트엔드 호출 금지)"
     )
     @GetMapping("/internal/{id}")
+
     public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable UUID id) {
         log.info("[Internal Controller] 타 서비스로부터 유저 조회 요청 수신. UserId: {}", id);
         UserResponseDto response = userService.getUserById(id);
@@ -94,7 +95,6 @@ public class UserController {
         UserResponseDto response = userService.getUserBySub(keycloakSub);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
-
 
     @PatchMapping("/internal/{userId}/company")
     public ResponseEntity<UserResponseDto> updateUserCompany(

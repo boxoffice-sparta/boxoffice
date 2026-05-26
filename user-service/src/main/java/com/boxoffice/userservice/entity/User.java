@@ -34,6 +34,7 @@ public class User extends BaseEntity {
     @Column(name = "hub_id", nullable = true)
     private UUID hubId;
 
+
     @Column(name = "company_id", nullable = true)
     private UUID companyId;
 

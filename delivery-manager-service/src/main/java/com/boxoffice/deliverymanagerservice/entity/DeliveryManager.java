@@ -2,13 +2,18 @@ package com.boxoffice.deliverymanagerservice.entity;
 
 import com.boxoffice.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "p_delivery_managers")
 @Getter
-@Builder
+@Builder // HEAD (준영님 코드) 반영: 클래스 레벨 빌더
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DeliveryManager extends BaseEntity {
@@ -22,6 +27,13 @@ public class DeliveryManager extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_type", nullable = false)
     private DeliveryType type;
+
+    @Column(name = "slack_id", nullable = false)
+    private String slackId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ManagerStatus status;
 
     public void updateHub(UUID newHubId) {
         this.hubId = newHubId;

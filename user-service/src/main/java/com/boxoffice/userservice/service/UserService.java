@@ -7,6 +7,7 @@ import com.boxoffice.userservice.client.KeycloakClient;
 import com.boxoffice.userservice.client.dto.HubManagerRegisterRequestDto;
 import com.boxoffice.userservice.client.dto.KeycloakUserCreateRequestDto;
 import com.boxoffice.userservice.dto.*;
+
 import com.boxoffice.userservice.entity.Email;
 import com.boxoffice.userservice.entity.User;
 import com.boxoffice.userservice.entity.UserRole;
@@ -238,6 +239,7 @@ public class UserService {
         return UserResponseDto.from(targetUser);
     }
 
+
     @Transactional
     public void deleteUser(UUID targetUserId, String requesterSub) {
 
@@ -257,6 +259,7 @@ public class UserService {
 
         log.info("[UserDelete] 유저 논리적 삭제 완료. TargetUserId: {}", targetUserId);
     }
+
 
     public void logout(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
