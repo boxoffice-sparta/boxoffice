@@ -16,6 +16,7 @@ public record HubGetResponseDto(
         Double longitude,
         HubType hubType,
         UUID managerId,
+        String closingReason,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -30,6 +31,7 @@ public record HubGetResponseDto(
                 hub.getCoordinate().getLongitude(),
                 hub.getHubType(),
                 hub.getManagerId(),
+                hub.getClosingReason(),
                 hub.getCreatedAt(),
                 hub.getUpdatedAt()
         );
