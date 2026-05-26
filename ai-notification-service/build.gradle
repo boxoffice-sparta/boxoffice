@@ -17,3 +17,21 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }
+
+// 기본 test는 외부 호출 격리를 위해 e2e 태그 제외
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'e2e'
+    }
+}
+
+// 실제 외부 호출(E2E) 전용. GEMINI_API_KEY·postgres 필요: ./gradlew :ai-notification-service:e2eTest
+tasks.register('e2eTest', Test) {
+    description = 'Runs e2e-tagged tests that call real external services (Gemini).'
+    group = 'verification'
+    useJUnitPlatform {
+        includeTags 'e2e'
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
