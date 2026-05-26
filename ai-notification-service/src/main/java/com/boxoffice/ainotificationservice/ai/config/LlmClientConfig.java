@@ -5,8 +5,8 @@ import com.boxoffice.ainotificationservice.ai.client.GeminiLlmClient;
 import com.boxoffice.ainotificationservice.ai.client.LlmClient;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 public class LlmClientConfig {
 
     @Bean
-    @ConditionalOnProperty(prefix = "spring.ai.google.genai", name = "api-key")
+    @ConditionalOnExpression("'${spring.ai.google.genai.api-key:}' != ''")
     public LlmClient geminiLlmClient(ChatModel chatModel) {
         return new GeminiLlmClient(ChatClient.create(chatModel));
     }
