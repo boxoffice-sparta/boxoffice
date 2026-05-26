@@ -68,7 +68,8 @@ class HubServiceTest {
                 null,
                 37.4956,
                 127.1236,
-                HubType.REGIONAL
+                HubType.REGIONAL,
+                null
         );
 
         given(hubRepository.existsByName(request.name())).willReturn(false);
@@ -96,7 +97,8 @@ class HubServiceTest {
                 null,
                 37.2749,
                 127.4431,
-                HubType.CENTRAL
+                HubType.CENTRAL,
+                null
         );
         given(hubRepository.existsByName(request.name())).willReturn(false);
         given(hubRepository.save(any(Hub.class))).willAnswer(i -> i.getArgument(0));
@@ -119,7 +121,8 @@ class HubServiceTest {
                 null,
                 37.4956,
                 127.1236,
-                HubType.INACTIVE
+                HubType.INACTIVE,
+                null
         );
 
         // when & then
@@ -142,7 +145,8 @@ class HubServiceTest {
                 null,
                 37.4956,
                 127.1236,
-                HubType.REGIONAL
+                HubType.REGIONAL,
+                null
         );
 
         given(hubRepository.existsByName(request.name())).willReturn(true);
