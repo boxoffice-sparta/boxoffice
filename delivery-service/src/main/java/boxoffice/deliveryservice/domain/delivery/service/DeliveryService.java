@@ -111,7 +111,40 @@ public class DeliveryService {
     private UserResponseDto getUserInfo(String keycloakSub) {
         return userServiceClient.getUserBySub(keycloakSub).getData();
     }
+    public DeliveryResponseDto updateDelivery(String keycloakSub, UUID deliveryId, DeliveryUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateInfo(request.recipientName(), request.recipientSlackId(), request.deliveryAddress().toAddressVO());
+        return DeliveryResponseDto.from(delivery);
+    }
 
+    public DeliveryResponseDto updateDeliveryStatus(String keycloakSub, UUID deliveryId, DeliveryStatusUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateStatus(request.status());
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRoute(routeId, deliveryId, request);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRouteStatus(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteStatusUpdateRequestDto request) {
+        UserInfoDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRouteStatus(routeId, deliveryId, request);
+    }
+
+    private Delivery findDeliveryOrThrow(UUID deliveryId) {
+        return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+    }
     private void checkDeliveryAccess(Delivery delivery, UserResponseDto userInfo) {
         switch (userInfo.getRole()) {
             case MASTER -> { }

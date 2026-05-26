@@ -1,17 +1,24 @@
 package boxoffice.deliveryservice.domain.delivery.controller;
 
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryUpdateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.service.DeliveryService;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.common.response.PageResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +62,39 @@ public class DeliveryController {
             @PathVariable UUID routeId) {
         return ResponseEntity.ok(
                 ApiResponse.success(deliveryService.getDeliveryRoute(keycloakSub, deliveryId, routeId)));
+    }
+
+    @PatchMapping("/{deliveryId}")
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> updateDelivery(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @Valid @RequestBody DeliveryUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDelivery(keycloakSub, deliveryId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/status")
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> updateDeliveryStatus(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @Valid @RequestBody DeliveryStatusUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/routes/{routeId}")
+    public ResponseEntity<ApiResponse<DeliveryRouteResponseDto>> updateDeliveryRoute(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @PathVariable UUID routeId,
+            @Valid @RequestBody DeliveryRouteUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryRoute(keycloakSub, deliveryId, routeId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/routes/{routeId}/status")
+    public ResponseEntity<ApiResponse<DeliveryRouteResponseDto>> updateDeliveryRouteStatus(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @PathVariable UUID routeId,
+            @Valid @RequestBody DeliveryRouteStatusUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request)));
     }
 }
