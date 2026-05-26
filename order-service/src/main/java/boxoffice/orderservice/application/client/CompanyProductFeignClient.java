@@ -12,15 +12,17 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "company-product-service")
 public interface CompanyProductFeignClient {
 
+  // TODO: 수정 예정
   @GetMapping("/internal/products/hubStatus")
-  InternalCompanyHub getCompanyById(UUID supplierId, UUID receiverId);
+  InternalCompanyHub getCompanyById(@RequestParam UUID supplierId,@RequestParam UUID receiverId);
 
   // 주문 전 상품 존재 여부, 삭제 여부, 재고 상태 검증
-  @GetMapping("/internal/products/check")
+  @PostMapping("/internal/products/check")
   StockCheckResponse checkStocks(@RequestBody List<StockCheckRequest> requests);
 
   // 재고 차감 요청
