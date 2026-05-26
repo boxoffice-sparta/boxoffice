@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -31,6 +32,9 @@ public class DeliveryManager extends BaseEntity {
     @Column(name = "slack_id", nullable = false)
     private String slackId;
 
+    @Column(name = "last_assigned_at")
+    private LocalDateTime lastAssignedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ManagerStatus status;
@@ -41,5 +45,9 @@ public class DeliveryManager extends BaseEntity {
 
     public void updateType(DeliveryType newType) {
         this.type = newType;
+    }
+
+    public void recordAssignment() {
+        this.lastAssignedAt = LocalDateTime.now();
     }
 }

@@ -1,6 +1,7 @@
 package com.boxoffice.deliverymanagerservice.repository;
 
 import com.boxoffice.deliverymanagerservice.entity.DeliveryManager;
+import com.boxoffice.deliverymanagerservice.entity.DeliveryType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,6 @@ public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager
     Optional<DeliveryManager> findByUserId(UUID userId);
 
     Page<DeliveryManager> findByHubId(UUID hubId, Pageable pageable);
+
+    Optional<DeliveryManager> findFirstByHubIdAndTypeAndIsDeletedFalseOrderByLastAssignedAtAsc(UUID hubId, DeliveryType type);
 }
