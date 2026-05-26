@@ -24,18 +24,17 @@ public enum HubErrorCode implements ErrorCode {
     TRANSFER_INVALID_STATUS(HttpStatus.BAD_REQUEST, "HUB-013", "현재 상태에서 허용되지 않는 작업입니다."),
     TRANSFER_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "HUB-014", "이미 완료된 재고 이전입니다."),
     HUB_HAS_ACTIVE_DELIVERY(HttpStatus.CONFLICT, "HUB-015", "진행 중인 배송이 있어 삭제할 수 없습니다."),
-    HUB_HAS_STOCK(HttpStatus.CONFLICT, "HUB-016", "재고가 남아 있어 삭제할 수 없습니다."),
-    HUB_ALREADY_CLOSING(HttpStatus.BAD_REQUEST, "HUB-017", "이미 CLOSING 상태인 허브입니다."),
-    HUB_NOT_CLOSING(HttpStatus.BAD_REQUEST, "HUB-018", "CLOSING 상태의 허브만 운영중단할 수 있습니다."),
-    CENTRAL_HUB_CANNOT_CLOSE(HttpStatus.BAD_REQUEST, "HUB-019", "CENTRAL 허브는 마감 예정 상태로 전환할 수 없습니다."),
-    HUB_CLOSING(HttpStatus.BAD_REQUEST, "HUB-020", "CLOSING 상태의 허브에서는 허용되지 않는 작업입니다."),
-    TRANSFER_EXCEEDS_CAPACITY(HttpStatus.BAD_REQUEST, "HUB-021", "도착 허브의 가용 용량을 초과합니다."),
-    HUB_NOT_INACTIVE_FOR_TRANSFER(HttpStatus.BAD_REQUEST, "HUB-022", "재고 이전은 INACTIVE 상태의 허브에서만 가능합니다."),
-    TRANSFER_ALREADY_EXISTS(HttpStatus.CONFLICT, "HUB-023", "이미 진행 중인 재고 이전이 있습니다."),
-    TRANSFER_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "HUB-024", "이미 출발 처리된 재고 이전이 있습니다."),
-    NO_COMPANIES_TO_TRANSFER(HttpStatus.BAD_REQUEST, "HUB-025", "이전할 업체가 없습니다."),
-    CENTRAL_HUB_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "HUB-026", "CENTRAL 허브는 삭제할 수 없습니다."),
-    HUB_HAS_COMPANIES(HttpStatus.CONFLICT, "HUB-027", "소속 업체가 남아 있어 삭제할 수 없습니다.");
+    HUB_ALREADY_CLOSING(HttpStatus.BAD_REQUEST, "HUB-016", "이미 CLOSING 상태인 허브입니다."),
+    HUB_NOT_CLOSING(HttpStatus.BAD_REQUEST, "HUB-017", "CLOSING 상태의 허브만 운영중단할 수 있습니다."),
+    CENTRAL_HUB_CANNOT_CLOSE(HttpStatus.BAD_REQUEST, "HUB-018", "CENTRAL 허브는 마감 예정 상태로 전환할 수 없습니다."),
+    HUB_CLOSING(HttpStatus.BAD_REQUEST, "HUB-019", "CLOSING 상태의 허브에서는 허용되지 않는 작업입니다."),
+    TRANSFER_EXCEEDS_CAPACITY(HttpStatus.BAD_REQUEST, "HUB-020", "도착 허브의 가용 용량을 초과합니다."),
+    HUB_NOT_INACTIVE_FOR_TRANSFER(HttpStatus.BAD_REQUEST, "HUB-021", "재고 이전은 INACTIVE 상태의 허브에서만 가능합니다."),
+    TRANSFER_ALREADY_EXISTS(HttpStatus.CONFLICT, "HUB-022", "이미 진행 중인 재고 이전이 있습니다."),
+    TRANSFER_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "HUB-023", "이미 출발 처리된 재고 이전이 있습니다."),
+    NO_COMPANIES_TO_TRANSFER(HttpStatus.BAD_REQUEST, "HUB-024", "이전할 업체가 없습니다."),
+    CENTRAL_HUB_CANNOT_DELETE(HttpStatus.BAD_REQUEST, "HUB-025", "CENTRAL 허브는 삭제할 수 없습니다."),
+    HUB_HAS_COMPANIES(HttpStatus.CONFLICT, "HUB-026", "소속 업체가 남아 있어 삭제할 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
