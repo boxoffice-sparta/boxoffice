@@ -39,7 +39,9 @@ class WorkingHoursTest {
         @DisplayName("실패 - null start")
         void fail_null_start() {
             assertThatThrownBy(() -> new WorkingHours(null, LocalTime.of(18, 0)))
-                    .isInstanceOf(BaseException.class);
+                    .isInstanceOf(BaseException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(AiErrorCode.INVALID_WORKING_HOURS);
         }
     }
 
