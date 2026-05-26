@@ -81,16 +81,18 @@ public class DeliveryManagerService {
 
     @Transactional
     public DeliveryAssignResponseDto assignNextDeliveryManager(DeliveryAssignRequestDto request) {
+        // 🌟 [수정] ACTIVE 대신 WAITING(대기 중) 상태인 기사님을 찾도록 변경!
         DeliveryManager manager = deliveryManagerRepository
-                .findFirstByHubIdAndTypeAndIsDeletedFalseOrderByLastAssignedAtAsc(request.getHubId(), request.getType())
+                .findFirstByHubIdAndTypeAndStatusAndIsDeletedFalseOrderByLastAssignedAtAsc(
+                        request.getHubId(), request.getType(), ManagerStatus.WAITING)
                 .orElseThrow(() -> new BaseException(DeliveryManagerErrorCode.DELIVERY_MANAGER_NOT_FOUND));
-
 
         manager.recordAssignment();
         log.info("[DeliveryManagerAssign] 기사님 자동 배정 완료. ManagerId: {}, HubId: {}", manager.getId(), request.getHubId());
 
         return new DeliveryAssignResponseDto(manager.getId());
     }
+
     private void checkAdminRole(String role) {
         if (!"MASTER".equals(role) && !"HUB_MANAGER".equals(role)) {
             throw new BaseException(DeliveryManagerErrorCode.FORBIDDEN_ACCESS);

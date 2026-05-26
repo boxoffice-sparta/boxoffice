@@ -14,7 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "p_delivery_managers")
 @Getter
-@Builder // HEAD (준영님 코드) 반영: 클래스 레벨 빌더
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class DeliveryManager extends BaseEntity {
