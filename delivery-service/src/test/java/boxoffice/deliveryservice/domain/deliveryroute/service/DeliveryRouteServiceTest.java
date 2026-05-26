@@ -2,6 +2,8 @@ package boxoffice.deliveryservice.domain.deliveryroute.service;
 
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto.AddressRequest;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRoute;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRouteStatus;
@@ -142,6 +144,90 @@ class DeliveryRouteServiceTest {
 
             // when & then
             assertThatThrownBy(() -> deliveryRouteService.getRouteByDelivery(deliveryId, routeId))
+                    .isInstanceOf(BaseException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateRoute()")
+    class UpdateRoute {
+
+        @Test
+        @DisplayName("성공 - 실제 거리/소요시간 업데이트")
+        void success() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            Delivery delivery = createDelivery();
+            DeliveryRoute route = createRoute(delivery, 1);
+            DeliveryRouteUpdateRequestDto request = new DeliveryRouteUpdateRequestDto(new BigDecimal("150.5"), 90);
+
+            given(deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId))
+                    .willReturn(Optional.of(route));
+
+            // when
+            DeliveryRouteResponseDto result = deliveryRouteService.updateRoute(routeId, deliveryId, request);
+
+            // then
+            assertThat(result.actualDistance()).isEqualByComparingTo(new BigDecimal("150.5"));
+            assertThat(result.actualDuration()).isEqualTo(90);
+            assertThat(result.expectedDistance()).isEqualByComparingTo(new BigDecimal("100.5"));
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 경로 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            DeliveryRouteUpdateRequestDto request = new DeliveryRouteUpdateRequestDto(new BigDecimal("150.5"), 90);
+
+            given(deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryRouteService.updateRoute(routeId, deliveryId, request))
+                    .isInstanceOf(BaseException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateRouteStatus()")
+    class UpdateRouteStatus {
+
+        @Test
+        @DisplayName("성공 - 경로 상태 변경")
+        void success() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            Delivery delivery = createDelivery();
+            DeliveryRoute route = createRoute(delivery, 1);
+            DeliveryRouteStatusUpdateRequestDto request = new DeliveryRouteStatusUpdateRequestDto(DeliveryRouteStatus.MOVING);
+
+            given(deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId))
+                    .willReturn(Optional.of(route));
+
+            // when
+            DeliveryRouteResponseDto result = deliveryRouteService.updateRouteStatus(routeId, deliveryId, request);
+
+            // then
+            assertThat(result.status()).isEqualTo(DeliveryRouteStatus.MOVING);
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 경로 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            DeliveryRouteStatusUpdateRequestDto request = new DeliveryRouteStatusUpdateRequestDto(DeliveryRouteStatus.MOVING);
+
+            given(deliveryRouteRepository.findByIdAndDeliveryIdAndDeletedAtIsNull(routeId, deliveryId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryRouteService.updateRouteStatus(routeId, deliveryId, request))
                     .isInstanceOf(BaseException.class);
         }
     }
