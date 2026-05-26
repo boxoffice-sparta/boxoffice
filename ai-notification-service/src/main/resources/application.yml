@@ -5,6 +5,14 @@ spring:
   application:
     name: ai-notification-service
 
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            model: gemini-2.0-flash
+
   cloud:
     compatibility-verifier:
       enabled: false
