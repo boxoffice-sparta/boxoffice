@@ -81,7 +81,6 @@ public class DeliveryManagerService {
 
     @Transactional
     public DeliveryAssignResponseDto assignNextDeliveryManager(DeliveryAssignRequestDto request) {
-        // 🌟 [수정] ACTIVE 대신 WAITING(대기 중) 상태인 기사님을 찾도록 변경!
         DeliveryManager manager = deliveryManagerRepository
                 .findFirstByHubIdAndTypeAndStatusAndIsDeletedFalseOrderByLastAssignedAtAsc(
                         request.getHubId(), request.getType(), ManagerStatus.WAITING)
