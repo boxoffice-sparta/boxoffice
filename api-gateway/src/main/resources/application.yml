@@ -9,14 +9,23 @@ spring:
       enabled: false
     gateway:
       routes:
-        # 1. ?? ? ?? ?? ?? ?? ??
         - id: user-service
-          uri: lb://user-service # ???? ??? ?? ??? ???? ????? ???
+          uri: lb://user-service
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**
+
+        - id: delivery-service
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/deliveries/**, /api/v1/delivery-routes/**
+
+        - id: delivery-manager-service
+          uri: lb://delivery-manager-service
+          predicates:
+            - Path=/api/delivery-managers/**
 
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/ # ??? ??? ? ?? ????
+      defaultZone: http://eureka-server:8761/eureka/
