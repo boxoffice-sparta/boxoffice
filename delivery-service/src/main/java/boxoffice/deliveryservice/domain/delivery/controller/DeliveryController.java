@@ -97,4 +97,38 @@ public class DeliveryController {
             @Valid @RequestBody DeliveryRouteStatusUpdateRequestDto request) {
         return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request)));
     }
+
+    @PatchMapping("/{deliveryId}")
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> updateDelivery(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @Valid @RequestBody DeliveryUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDelivery(keycloakSub, deliveryId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/status")
+    public ResponseEntity<ApiResponse<DeliveryResponseDto>> updateDeliveryStatus(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @Valid @RequestBody DeliveryStatusUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/routes/{routeId}")
+    public ResponseEntity<ApiResponse<DeliveryRouteResponseDto>> updateDeliveryRoute(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @PathVariable UUID routeId,
+            @Valid @RequestBody DeliveryRouteUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryRoute(keycloakSub, deliveryId, routeId, request)));
+    }
+
+    @PatchMapping("/{deliveryId}/routes/{routeId}/status")
+    public ResponseEntity<ApiResponse<DeliveryRouteResponseDto>> updateDeliveryRouteStatus(
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @PathVariable UUID deliveryId,
+            @PathVariable UUID routeId,
+            @Valid @RequestBody DeliveryRouteStatusUpdateRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request)));
+    }
 }
