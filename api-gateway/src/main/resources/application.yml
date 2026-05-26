@@ -39,6 +39,11 @@ spring:
           filters:
             - JwtAuthenticationFilter
 
+        - id: delivery-service
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/deliveries/**, /api/v1/delivery-routes/**
+
         - id: delivery-manager-service
           uri: lb://delivery-manager-service
           predicates:
