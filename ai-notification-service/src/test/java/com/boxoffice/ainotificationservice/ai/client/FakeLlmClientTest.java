@@ -1,7 +1,9 @@
 package com.boxoffice.ainotificationservice.ai.client;
 
-import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlineInput;
+import com.boxoffice.ainotificationservice.ai.deadline.DeliveryRoute;
+import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlineContext;
 import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlinePrediction;
+import com.boxoffice.ainotificationservice.ai.deadline.OrderLine;
 import com.boxoffice.ainotificationservice.ai.deadline.WorkingHours;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,14 +11,18 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("FakeLlmClient")
 class FakeLlmClientTest {
 
-    private static final DispatchDeadlineInput INPUT = new DispatchDeadlineInput(
+    private static final DispatchDeadlineContext INPUT = new DispatchDeadlineContext(
             LocalDateTime.of(2026, 5, 21, 18, 0),
+            "냉장 보관 필수",
+            List.of(new OrderLine("고등어", 10)),
+            new DeliveryRoute("서울허브", List.of("대전허브"), "부산 해운대구"),
             Duration.ofMinutes(120),
             WorkingHours.defaultHours()
     );
@@ -52,7 +58,7 @@ class FakeLlmClientTest {
         void custom_strategy_fallback() {
             // given
             FakeLlmClient client = new FakeLlmClient(
-                    input -> DispatchDeadlinePrediction.fallback(LocalDateTime.of(2026, 5, 21, 14, 0))
+                    context -> DispatchDeadlinePrediction.fallback(LocalDateTime.of(2026, 5, 21, 14, 0))
             );
 
             // when
