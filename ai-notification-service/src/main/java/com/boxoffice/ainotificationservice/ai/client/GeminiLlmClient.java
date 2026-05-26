@@ -4,9 +4,11 @@ import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlineContext;
 import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlinePrediction;
 import com.boxoffice.ainotificationservice.ai.exception.AiErrorCode;
 import com.boxoffice.common.exception.BaseException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 
 // Spring AI 기반 Gemini 실제 어댑터. 빈 구성은 LlmClientConfig가 api-key 설정 시 등록.
+@Slf4j
 public class GeminiLlmClient implements LlmClient {
 
     private static final String SYSTEM_PROMPT = """
@@ -32,6 +34,7 @@ public class GeminiLlmClient implements LlmClient {
             return DispatchDeadlinePrediction.llm(
                     response.dispatchDeadline(), response.reasoning(), response.confidence());
         } catch (RuntimeException e) {
+            log.warn("Gemini 발송 시한 예측 호출 실패 - fallback 전환", e);
             throw new BaseException(AiErrorCode.LLM_CALL_FAILED);
         }
     }
