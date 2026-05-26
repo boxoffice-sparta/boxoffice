@@ -93,4 +93,16 @@ public class HubController {
         }
         return ResponseEntity.ok(ApiResponse.success(hubService.deactivateHub(hubId)));
     }
+
+    @DeleteMapping("/{hubId}")
+    public ResponseEntity<Void> deleteHub(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable UUID hubId
+    ) {
+        if (!"MASTER".equals(role)) {
+            throw new BaseException(CommonErrorCode.FORBIDDEN);
+        }
+        hubService.deleteHub(hubId);
+        return ResponseEntity.noContent().build();
+    }
 }
