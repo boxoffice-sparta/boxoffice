@@ -66,6 +66,7 @@ class DispatchDeadlinePredictorTest {
             assertThat(prediction.dispatchDeadline()).isEqualTo(EXPECTED_DEADLINE);
             assertThat(prediction.fallbackUsed()).isFalse();
             assertThat(llm.recordedInputs()).containsExactly(CONTEXT);
+            assertThat(cache.find(hasher.hash(CONTEXT))).contains(prediction);
             verify(predictionLogRepository).save(any());
         }
 
@@ -103,6 +104,7 @@ class DispatchDeadlinePredictorTest {
             // then
             assertThat(prediction.fallbackUsed()).isTrue();
             assertThat(prediction.dispatchDeadline()).isEqualTo(EXPECTED_DEADLINE);
+            assertThat(cache.find(hasher.hash(CONTEXT))).isEmpty();
             verify(predictionLogRepository).save(any());
         }
     }

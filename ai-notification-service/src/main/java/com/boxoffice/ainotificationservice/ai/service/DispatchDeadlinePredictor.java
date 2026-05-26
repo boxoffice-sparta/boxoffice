@@ -29,7 +29,10 @@ public class DispatchDeadlinePredictor {
             return cached.get();
         }
         DispatchDeadlinePrediction prediction = predictOrFallback(context);
-        cache.put(inputHash, prediction);
+        // fallback은 LLM 장애 시 임시 대체값이라 캐싱하지 않는다 — 복구 후 같은 입력이 즉시 정상 예측되도록.
+        if (!prediction.fallbackUsed()) {
+            cache.put(inputHash, prediction);
+        }
         predictionLogRepository.save(PredictionLog.of(inputHash, prediction));
         return prediction;
     }
