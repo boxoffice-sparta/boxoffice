@@ -25,6 +25,13 @@ spring:
         locator:
           enabled: true
       routes:
+        - id: block-internal-api
+          uri: no://op
+          predicates:
+            - Path=/internal/**, /api/internal/**
+          filters:
+            - SetStatus=403
+
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -45,4 +52,3 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-
