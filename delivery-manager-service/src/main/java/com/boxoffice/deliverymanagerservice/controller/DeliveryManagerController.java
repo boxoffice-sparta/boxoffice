@@ -56,25 +56,4 @@ public class DeliveryManagerController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PostMapping("/internal/assign")
-    public ResponseEntity<ApiResponse<DeliveryAssignResponseDto>> assignNextManager(
-            @RequestBody DeliveryAssignRequestDto request) {
-
-        log.info("[Internal Controller] 배송 담당자 자동 배정 요청 수신. HubId: {}, Type: {}", request.getHubId(), request.getType());
-        DeliveryAssignResponseDto response = deliveryManagerService.assignNextDeliveryManager(request);
-
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
-
-    @PatchMapping("/internal/clear-hub/{hubId}")
-    public ResponseEntity<ApiResponse<Void>> clearDeliveryManagerHubId(
-            @PathVariable("hubId") UUID hubId) {
-
-        log.info("[Internal Controller] 허브 삭제에 따른 기사님 hubId 초기화 요청 수신. TargetHubId: {}", hubId);
-
-        deliveryManagerService.clearDeliveryManagerHubId(hubId);
-
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
 }
