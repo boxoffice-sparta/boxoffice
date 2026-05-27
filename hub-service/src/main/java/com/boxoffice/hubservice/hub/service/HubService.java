@@ -8,6 +8,7 @@ import com.boxoffice.hubservice.exception.HubErrorCode;
 import com.boxoffice.hubservice.hub.dto.request.HubCreateRequestDto;
 import com.boxoffice.hubservice.hub.dto.request.HubClosingRequestDto;
 import com.boxoffice.hubservice.hub.dto.request.HubUpdateRequestDto;
+import com.boxoffice.hubservice.hub.dto.response.HubActiveResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubCreateResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubDeactivateResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubGetResponseDto;
@@ -148,7 +149,7 @@ public class HubService {
         return HubDeactivateResponseDto.from(hub);
     }
 
-    public HubGetResponseDto getActiveHub(UUID hubId) {
+    public HubActiveResponseDto getActiveHub(UUID hubId) {
         Hub hub = hubRepository.findById(hubId)
                 .orElseThrow(() -> new BaseException(HubErrorCode.HUB_NOT_FOUND));
         if (hub.isInactive()) {
@@ -157,7 +158,7 @@ public class HubService {
         if (hub.isClosing()) {
             throw new BaseException(HubErrorCode.HUB_CLOSING);
         }
-        return HubGetResponseDto.from(hub);
+        return new HubActiveResponseDto(hub.getId(), hub.isActive());
     }
 
     @Transactional
