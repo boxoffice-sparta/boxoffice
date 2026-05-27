@@ -7,6 +7,7 @@ import com.boxoffice.userservice.dto.UserStatusUpdateRequestDto;
 import com.boxoffice.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,11 +28,11 @@ public class UserController {
 
     @Operation(
             summary = "내 정보 조회",
-            description = "Gateway가 전파한 X-User-Sub 헤더 기반으로 현재 로그인한 사용자의 상세 정보를 조회합니다."
+            description = "Gateway가 전파한 X-User-Id 헤더 기반으로 현재 로그인한 사용자의 상세 정보를 조회합니다." // 🌟 설명문 수정
     )
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponseDto>> getMyInfo(
-            @RequestHeader("X-User-Sub") String keycloakSub) {
+            @RequestHeader("X-User-Id") String keycloakSub) {
         UserResponseDto response = userService.getMyInfo(keycloakSub);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -42,7 +43,7 @@ public class UserController {
     )
     @GetMapping
     public ResponseEntity<ApiResponse<Page<UserResponseDto>>> getUserList(
-            @RequestHeader("X-User-Sub") String keycloakSub,
+            @RequestHeader("X-User-Id") String keycloakSub,
             Pageable pageable) {
         Page<UserResponseDto> response = userService.getUserList(keycloakSub, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -55,8 +56,8 @@ public class UserController {
     @PatchMapping("/{userId}/status")
     public ResponseEntity<ApiResponse<UserResponseDto>> updateUserStatus(
             @PathVariable("userId") UUID userId,
-            @RequestHeader("X-User-Sub") String keycloakSub,
-            @RequestBody UserStatusUpdateRequestDto requestDto) {
+            @RequestHeader("X-User-Id") String keycloakSub,
+            @Valid @RequestBody UserStatusUpdateRequestDto requestDto) {
         UserResponseDto response = userService.updateUserStatus(userId, keycloakSub, requestDto);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -68,7 +69,7 @@ public class UserController {
     @DeleteMapping("/{userId}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
             @PathVariable("userId") UUID userId,
-            @RequestHeader("X-User-Sub") String keycloakSub) {
+            @RequestHeader("X-User-Id") String keycloakSub) {
         userService.deleteUser(userId, keycloakSub);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -80,7 +81,7 @@ public class UserController {
     @PatchMapping("/{userId}/hub")
     public ResponseEntity<ApiResponse<Void>> updateUserHub(
             @PathVariable("userId") UUID userId,
-            @RequestBody UserHubUpdateRequestDto request,
+            @Valid @RequestBody UserHubUpdateRequestDto request,
             @RequestHeader("X-User-Role") String role) {
 
         log.info("[Controller] 허브 관리자 소속 허브 변경 요청 수신. UserId: {}, NewHubId: {}", userId, request.getHubId());

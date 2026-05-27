@@ -22,7 +22,7 @@ public class DeliveryManager extends BaseEntity {
     @Column(name = "user_id", nullable = false, unique = true)
     private UUID userId;
 
-    @Column(name = "hub_id", nullable = false)
+    @Column(name = "hub_id", nullable = true)
     private UUID hubId;
 
     @Enumerated(EnumType.STRING)
