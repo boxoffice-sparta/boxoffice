@@ -20,8 +20,11 @@ public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager
 
     Page<DeliveryManager> findByHubId(UUID hubId, Pageable pageable);
 
-    Optional<DeliveryManager> findFirstByHubIdAndTypeAndStatusAndIsDeletedFalseOrderByLastAssignedAtAsc(
-            UUID hubId, DeliveryType type, ManagerStatus status);
+    Optional<DeliveryManager> findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByLastAssignedAtAsc(
+            UUID hubId,
+            DeliveryType type,
+            ManagerStatus status
+    );
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE DeliveryManager dm SET dm.hubId = null, dm.status = :status WHERE dm.hubId = :hubId")

@@ -82,7 +82,7 @@ public class DeliveryManagerService {
     @Transactional
     public DeliveryAssignResponseDto assignNextDeliveryManager(DeliveryAssignRequestDto request) {
         DeliveryManager manager = deliveryManagerRepository
-                .findFirstByHubIdAndTypeAndStatusAndIsDeletedFalseOrderByLastAssignedAtAsc(
+                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByLastAssignedAtAsc(
                         request.getHubId(), request.getType(), ManagerStatus.WAITING)
                 .orElseThrow(() -> new BaseException(DeliveryManagerErrorCode.DELIVERY_MANAGER_NOT_FOUND));
 
