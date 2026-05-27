@@ -109,7 +109,7 @@ class CompanyControllerTest {
                         .content(requestBody))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
-                .andExpect(jsonPath("$.message", is(CommonErrorCode.UNAUTHORIZED.getCode())));
+                .andExpect(jsonPath("$.message", is(CommonErrorCode.UNAUTHORIZED.getMessage())));
 
         verify(companyFacade).createCompany(any(), isNull(), isNull());
         verifyNoMoreInteractions(companyFacade);
