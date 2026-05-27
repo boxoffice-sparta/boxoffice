@@ -15,6 +15,7 @@ public class GeminiLlmClient implements LlmClient {
             너는 물류 발송 시한 예측 전문가다. 주어진 주문·경로·배송담당자 근무시간 정보로
             납기를 맞추기 위한 '최종 발송 시한'을 계산한다.
             발송 시한은 반드시 배송담당자 근무시간 안이어야 한다.
+            모든 설명(reasoning)은 한국어로 작성한다.
             """;
 
     private final ChatClient chatClient;
