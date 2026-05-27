@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 import static boxoffice.deliveryservice.client.entity.UserRole.DELIVERY_MANAGER;
@@ -156,6 +157,11 @@ public class DeliveryService {
         checkDeleteAccess(delivery, userInfo);
         deliveryRouteService.deleteAllByDelivery(deliveryId, userInfo.getId());
         delivery.softDelete(userInfo.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public int getActiveDeliveryCount(UUID hubId) {
+        return deliveryRepository.countActiveByHubId(hubId, List.of(DeliveryStatus.DELIVERED, DeliveryStatus.CANCELED));
     }
 
     public void deleteDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId) {
