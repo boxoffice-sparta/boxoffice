@@ -38,6 +38,10 @@ public class Delivery extends BaseEntity {
 
     private DeliveryStatus deliveryStatus;
 
+    public void assignDeliveryPerson(UUID deliveryPersonId) {
+        this.deliveryPersonId = deliveryPersonId;
+    }
+
     // 정적 팩토리 메서드
     public static Delivery create(UUID orderId, UUID originHubId, UUID destinationHubId,
                                   AddressVO deliveryAddress, String recipientName, String recipientSlackId) {

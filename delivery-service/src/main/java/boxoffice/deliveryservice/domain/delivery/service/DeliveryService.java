@@ -1,6 +1,9 @@
 package boxoffice.deliveryservice.domain.delivery.service;
 
+import boxoffice.deliveryservice.client.DeliveryManagerClient;
 import boxoffice.deliveryservice.client.HubClient;
+import boxoffice.deliveryservice.client.dto.request.DeliveryManagerAssignRequestDto;
+import boxoffice.deliveryservice.client.dto.request.DeliveryManagerAssignRequestDto.DeliveryType;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
@@ -19,6 +22,7 @@ public class DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryRouteService deliveryRouteService;
     private final HubClient hubClient;
+    private final DeliveryManagerClient deliveryManagerClient;
 
     public DeliveryResponseDto createDelivery(DeliveryCreateRequestDto request) {
         Delivery delivery = Delivery.create(
@@ -31,7 +35,11 @@ public class DeliveryService {
         );
         deliveryRepository.save(delivery);
 
-        // TODO: delivery-manager-service 연동 후 hubDeliveryPersonId 배정
+        var assignResponse = deliveryManagerClient.assignDeliveryManager(
+                new DeliveryManagerAssignRequestDto(request.originHubId(), DeliveryType.HUB_TO_HUB)
+        ).getData();
+        delivery.assignDeliveryPerson(assignResponse.deliveryManagerId());
+
         HubRouteResponseDto hubRoute = hubClient.calculatePath(
                 request.originHubId(),
                 request.destinationHubId()
