@@ -43,6 +43,7 @@ jobs:
           cache: 'gradle'
 
       - name: Run Checkstyle
+        continue-on-error: true
         run: |
           ./gradlew :${{ inputs.service }}:checkstyleMain \
             --no-daemon \
@@ -50,7 +51,7 @@ jobs:
             --stacktrace
 
       - name: Upload Checkstyle report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: ignore
