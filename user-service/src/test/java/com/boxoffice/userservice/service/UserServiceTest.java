@@ -138,10 +138,16 @@ class UserServiceTest {
         given(userRepository.findByKeycloakSub("hub-manager-sub")).willReturn(Optional.of(hubManagerUser));
         given(userRepository.findById(targetUser.getId())).willReturn(Optional.of(targetUser));
 
+        // 🌟 리뷰 반영: FeignClient 호출이 발생할 때 아무것도 하지 않고(doNothing) 통과하도록 설정하여 NPE 방지
+        doNothing().when(hubServiceClient).registerHubManager(any(), any());
+
         UserResponseDto result = userService.updateUserStatus(targetUser.getId(), "hub-manager-sub", requestDto);
 
         assertEquals(UserStatus.APPROVED.name(), result.getStatus());
         assertEquals(UserStatus.APPROVED, targetUser.getStatus());
+
+        // 추가 검증: 실제로 FeignClient가 1번 호출되었는지 확인
+        verify(hubServiceClient, times(1)).registerHubManager(any(), any());
     }
 
     @Test
@@ -150,7 +156,7 @@ class UserServiceTest {
         UserStatusUpdateRequestDto requestDto = new UserStatusUpdateRequestDto();
         ReflectionTestUtils.setField(requestDto, "status", "APPROVED");
 
-        // 🌟 다른 허브(hubId2) 소속의 매니저 생성 시 UUID 적용
+        // 다른 허브(hubId2) 소속의 매니저 생성 시 UUID 적용
         User otherHubManager = User.builder().role(UserRole.HUB_MANAGER).hubId(hubId2).build();
 
         given(userRepository.findByKeycloakSub("other-hub-sub")).willReturn(Optional.of(otherHubManager));
@@ -192,7 +198,7 @@ class UserServiceTest {
     }
 
     // =====================================================================
-    // 🌟 [신규 추가] 허브 폐쇄/변경 안전망 관련 테스트 로직
+    // 🌟 허브 폐쇄/변경 안전망 관련 테스트 로직
     // =====================================================================
 
     @Test
@@ -216,8 +222,6 @@ class UserServiceTest {
         BaseException exception = assertThrows(BaseException.class, () ->
                 userService.updateUserHub(targetUser.getId(), newHubId, "HUB_MANAGER"));
 
-        // 기존 테스트 코드의 에러 검증 방식에 맞춤
-        // 만약 UserErrorCode를 사용하셨다면 UserErrorCode.FORBIDDEN_ACCESS 등으로 수정 필요
         assertEquals(UserErrorCode.FORBIDDEN_ACCESS, exception.getErrorCode());
     }
 
