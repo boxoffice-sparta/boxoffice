@@ -42,6 +42,8 @@ class DispatchDeadlinePredictorE2ETest {
 
         // when
         DispatchDeadlinePrediction prediction = predictor.predict(context);
+        // Gemini가 준 값: dispatchDeadline / reasoning / confidence (fallbackUsed는 로컬 플래그)
+        System.out.println("Gemini 예측 결과: " + prediction);
 
         // then
         assertThat(prediction.dispatchDeadline()).isNotNull();

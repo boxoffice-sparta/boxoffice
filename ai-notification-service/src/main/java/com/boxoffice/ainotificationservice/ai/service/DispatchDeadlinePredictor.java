@@ -37,7 +37,7 @@ public class DispatchDeadlinePredictor {
         return prediction;
     }
 
-    // LLM 호출 실패 시 규칙 기반 fallback으로 대체해 알림 유실을 막는다 (spec §8.2).
+    // LLM 호출 실패 시 규칙 기반 fallback으로 대체해 알림 유실을 방지.
     private DispatchDeadlinePrediction predictOrFallback(DispatchDeadlineContext context) {
         try {
             return llmClient.predictDispatchDeadline(context);
