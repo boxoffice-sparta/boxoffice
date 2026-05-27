@@ -310,7 +310,7 @@ public class UserService {
 
         if (targetUser.getRole() != UserRole.SUPPLIER_MANAGER) {
             log.warn("[UserCompanyUpdate] 매핑 실패: 대상 유저가 SUPPLIER_MANAGER가 아닙니다. UserId: {}, Role: {}", targetUserId, targetUser.getRole());
-            throw new BaseException(CommonErrorCode.INVALID_INPUT); // 또는 UserErrorCode에 권한 불일치 에러 추가
+            throw new BaseException(CommonErrorCode.INVALID_INPUT);
         }
 
         targetUser.updateCompany(request.getCompanyId());
