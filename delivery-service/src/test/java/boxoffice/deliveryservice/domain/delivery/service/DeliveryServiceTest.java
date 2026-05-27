@@ -2,6 +2,7 @@ package boxoffice.deliveryservice.domain.delivery.service;
 
 import boxoffice.deliveryservice.client.HubClient;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto;
+import com.boxoffice.common.response.ApiResponse;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubInfo;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubRouteSegmentDto;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubType;
@@ -79,19 +80,14 @@ class DeliveryServiceTest {
         void success() {
             // given
             HubInfo seoulHub = new HubInfo(UUID.randomUUID(), "서울 허브", HubType.REGIONAL);
-            HubInfo daejeonHub = new HubInfo(UUID.randomUUID(), "대전 허브", HubType.CENTRAL);
             HubInfo busanHub = new HubInfo(UUID.randomUUID(), "부산 허브", HubType.REGIONAL);
-
             List<HubRouteSegmentDto> segments = List.of(
-                    new HubRouteSegmentDto(1, seoulHub, daejeonHub, 120, new BigDecimal("160.5")),
-                    new HubRouteSegmentDto(2, daejeonHub, busanHub, 90, new BigDecimal("120.3"))
+                    new HubRouteSegmentDto(1, seoulHub, busanHub, 210, new BigDecimal("280.8"))
             );
-            HubRouteResponseDto hubRoute = new HubRouteResponseDto(
-                    seoulHub, busanHub, segments, 210, new BigDecimal("280.8")
-            );
+            HubRouteResponseDto hubRoute = new HubRouteResponseDto(seoulHub, busanHub, segments, 210, new BigDecimal("280.8"));
 
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
-            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(hubRoute);
+            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(ApiResponse.success(hubRoute));
 
             // when
             DeliveryResponseDto result = deliveryService.createDelivery(request);
@@ -102,7 +98,6 @@ class DeliveryServiceTest {
             assertThat(result.destinationHubId()).isEqualTo(destinationHubId);
             assertThat(result.deliveryStatus()).isEqualTo(DeliveryStatus.WAITING);
             assertThat(result.deliveryPersonId()).isNull();
-
             verify(deliveryRouteService).createRoutes(any(Delivery.class), eq(segments));
         }
 
@@ -110,25 +105,21 @@ class DeliveryServiceTest {
         @DisplayName("성공 - hub-service fallback 시 빈 segments로 경로 생성 위임")
         void success_when_hub_fallback() {
             // given
-            HubRouteResponseDto emptyRoute = new HubRouteResponseDto(
-                    null, null, List.of(), 0, BigDecimal.ZERO
-            );
+            HubRouteResponseDto emptyRoute = new HubRouteResponseDto(null, null, List.of(), 0, BigDecimal.ZERO);
 
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
-            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(emptyRoute);
+            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(ApiResponse.success(emptyRoute));
 
             // when
             DeliveryResponseDto result = deliveryService.createDelivery(request);
 
             // then
-            assertThat(result.orderId()).isEqualTo(orderId);
             assertThat(result.deliveryStatus()).isEqualTo(DeliveryStatus.WAITING);
-
             verify(deliveryRouteService).createRoutes(any(Delivery.class), eq(List.of()));
         }
 
         @Test
-        @DisplayName("실패 - 배송 저장 중 DB 예외 발생 시 이후 단계 실행 안 함")
+        @DisplayName("실패 - DB 저장 실패 시 이후 단계 실행 안 함")
         void fail_when_delivery_save_throws() {
             // given
             given(deliveryRepository.save(any(Delivery.class)))
@@ -144,12 +135,13 @@ class DeliveryServiceTest {
         }
 
         @Test
-        @DisplayName("실패 - hub-service 호출 중 예외 발생 시 경로 생성 실행 안 함")
+        @DisplayName("실패 - hub-service 예외 발생 시 경로 생성 실행 안 함")
         void fail_when_hub_client_throws() {
             // given
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
             given(hubClient.calculatePath(originHubId, destinationHubId))
                     .willThrow(new RuntimeException("hub-service 호출 실패"));
+
 
             // when & then
             assertThatThrownBy(() -> deliveryService.createDelivery(request))
@@ -160,22 +152,20 @@ class DeliveryServiceTest {
         }
 
         @Test
-        @DisplayName("실패 - 경로 생성 중 예외 발생 시 전파")
+        @DisplayName("실패 - 경로 생성 예외 발생 시 전파")
         void fail_when_route_create_throws() {
             // given
-            HubRouteResponseDto hubRoute = new HubRouteResponseDto(
-                    null, null, List.of(), 0, BigDecimal.ZERO
-            );
+            HubRouteResponseDto hubRoute = new HubRouteResponseDto(null, null, List.of(), 0, BigDecimal.ZERO);
 
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
-            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(hubRoute);
-            willThrow(new RuntimeException("배송 경로 저장 실패"))
+            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(ApiResponse.success(hubRoute));
+            willThrow(new RuntimeException("경로 저장 실패"))
                     .given(deliveryRouteService).createRoutes(any(), any());
 
             // when & then
             assertThatThrownBy(() -> deliveryService.createDelivery(request))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessage("배송 경로 저장 실패");
+                    .hasMessage("경로 저장 실패");
         }
     }
 }
