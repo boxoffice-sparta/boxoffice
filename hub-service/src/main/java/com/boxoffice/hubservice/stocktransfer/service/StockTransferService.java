@@ -265,7 +265,8 @@ public class StockTransferService {
                     return new Candidate(toHub, route.getEstimatedDistanceKm(), available);
                 })
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(Candidate::distanceKm))
+                .sorted(Comparator.comparingDouble(c ->
+                        -(c.availableCapacity() / c.distanceKm().doubleValue())))
                 .toList();
     }
 
