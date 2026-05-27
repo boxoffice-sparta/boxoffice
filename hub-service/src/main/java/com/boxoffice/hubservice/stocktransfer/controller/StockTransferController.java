@@ -48,7 +48,7 @@ public class StockTransferController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<StockTransferResponseDto>>> getTransfers(
             @RequestHeader("X-User-Role") String role,
-            @RequestHeader(value = "X-Hub-Id", required = false) String hubIdStr,
+            @RequestHeader(value = "X-User-Hub-Id", required = false) String hubIdStr,
             @RequestHeader(value = "X-User-Id", required = false) String userIdStr,
             @RequestParam(required = false) TransferStatus status,
             @RequestParam(required = false) UUID fromHubId,
@@ -84,7 +84,7 @@ public class StockTransferController {
     @GetMapping("/{transferId}")
     public ResponseEntity<?> getTransfer(
             @RequestHeader("X-User-Role") String role,
-            @RequestHeader(value = "X-Hub-Id", required = false) String hubIdStr,
+            @RequestHeader(value = "X-User-Hub-Id", required = false) String hubIdStr,
             @RequestHeader(value = "X-User-Id", required = false) String userIdStr,
             @PathVariable UUID transferId
     ) {
@@ -115,7 +115,7 @@ public class StockTransferController {
     @PatchMapping("/{transferId}/dispatch")
     public ResponseEntity<ApiResponse<StockTransferResponseDto>> dispatch(
             @RequestHeader("X-User-Role") String role,
-            @RequestHeader("X-Hub-Id") String hubIdStr,
+            @RequestHeader("X-User-Hub-Id") String hubIdStr,
             @PathVariable UUID transferId
     ) {
         UUID hubId;
@@ -132,7 +132,7 @@ public class StockTransferController {
     @PatchMapping("/{transferId}/complete")
     public ResponseEntity<ApiResponse<StockTransferResponseDto>> complete(
             @RequestHeader("X-User-Role") String role,
-            @RequestHeader(value = "X-Hub-Id", required = false) String hubIdStr,
+            @RequestHeader(value = "X-User-Hub-Id", required = false) String hubIdStr,
             @RequestHeader(value = "X-User-Id", required = false) String userIdStr,
             @PathVariable UUID transferId,
             @Valid @RequestBody(required = false) StockTransferCompleteRequestDto request
@@ -161,7 +161,7 @@ public class StockTransferController {
     @PatchMapping("/{transferId}/cancel")
     public ResponseEntity<ApiResponse<StockTransferResponseDto>> cancel(
             @RequestHeader("X-User-Role") String role,
-            @RequestHeader(value = "X-Hub-Id", required = false) String hubIdStr,
+            @RequestHeader(value = "X-User-Hub-Id", required = false) String hubIdStr,
             @PathVariable UUID transferId
     ) {
         if ("MASTER".equals(role)) {
