@@ -32,7 +32,7 @@ public class HubService {
 
     @Transactional
     public HubCreateResponseDto createHub(HubCreateRequestDto request) {
-        if (request.hubType() == HubType.INACTIVE) {
+        if (request.hubType() == HubType.INACTIVE || request.hubType() == HubType.CLOSING) {
             throw new BaseException(HubErrorCode.INVALID_HUB_TYPE);
         }
 

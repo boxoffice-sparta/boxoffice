@@ -135,6 +135,30 @@ class HubServiceTest {
     }
 
     @Test
+    @DisplayName("CLOSING 타입으로 허브 생성 시 예외 발생")
+    void createHub_closingType_throwsException() {
+        // given
+        HubCreateRequestDto request = new HubCreateRequestDto(
+                "테스트 센터",
+                null,
+                "서울특별시 송파구 송파대로 55",
+                null,
+                37.4956,
+                127.1236,
+                HubType.CLOSING,
+                null
+        );
+
+        // when & then
+        assertThatThrownBy(() -> hubService.createHub(request))
+                .isInstanceOf(BaseException.class)
+                .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                        .isEqualTo(HubErrorCode.INVALID_HUB_TYPE));
+        verify(hubRepository, never()).existsByName(any());
+        verify(hubRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("중복된 허브 이름으로 생성 시 예외 발생")
     void createHub_duplicateName_throwsException() {
         // given
