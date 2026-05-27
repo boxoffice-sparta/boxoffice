@@ -5,6 +5,7 @@ import com.boxoffice.deliverymanagerservice.dto.*;
 import com.boxoffice.deliverymanagerservice.service.DeliveryManagerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class DeliveryManagerController {
     )
     @PostMapping
     public ResponseEntity<ApiResponse<DeliveryManagerResponseDto>> createDeliveryManager(
-            @RequestBody DeliveryManagerCreateRequestDto request,
+            @Valid @RequestBody DeliveryManagerCreateRequestDto request,
             @RequestHeader("X-User-Role") String role) {
         DeliveryManagerResponseDto response = deliveryManagerService.createDeliveryManager(request, role);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -53,7 +54,7 @@ public class DeliveryManagerController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<DeliveryManagerResponseDto>> updateDeliveryManager(
             @PathVariable UUID id,
-            @RequestBody DeliveryManagerUpdateRequestDto request,
+            @Valid @RequestBody DeliveryManagerUpdateRequestDto request,
             @RequestHeader("X-User-Role") String role) {
         DeliveryManagerResponseDto response = deliveryManagerService.updateDeliveryManager(id, request, role);
         return ResponseEntity.ok(ApiResponse.success(response));

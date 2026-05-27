@@ -33,7 +33,7 @@ public class DeliveryManagerService {
                 .userId(request.getUserId())
                 .hubId(request.getHubId())
                 .type(request.getType())
-                .slackId("NOT_REGISTERED")
+                .slackId(null)
                 .status(ManagerStatus.WAITING)
                 .build();
 

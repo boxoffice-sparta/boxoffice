@@ -29,7 +29,7 @@ public class DeliveryManager extends BaseEntity {
     @Column(name = "delivery_type", nullable = false)
     private DeliveryType type;
 
-    @Column(name = "slack_id", nullable = false)
+    @Column(name = "slack_id", nullable = true)
     private String slackId;
 
     @Column(name = "last_assigned_at")
