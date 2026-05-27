@@ -9,7 +9,7 @@ import boxoffice.orderservice.application.client.dto.response.StockCheckResponse
 import boxoffice.orderservice.application.client.dto.response.StockDeductResponse;
 import boxoffice.orderservice.infra.exception.OrderErrorCode;
 import com.boxoffice.common.exception.BaseException;
-import java.util.List;
+import java.util.List;  // checkStocks, restoreStocks용
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
@@ -36,7 +36,7 @@ public class CompanyProductFeignClientFallbackFactory implements FallbackFactory
             }
 
             @Override
-            public StockDeductResponse deductStocks(UUID orderId, List<StockDeductRequest> requests) {
+            public StockDeductResponse deductStocks(UUID orderId, StockDeductRequest requests) {
                 log.error("[CompanyProductFeignClient] 재고 차감 실패. orderId={}", orderId, cause);
                 throw new BaseException(OrderErrorCode.STOCK_DEDUCT_FAILED);
             }

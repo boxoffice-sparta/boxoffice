@@ -99,7 +99,7 @@ class OrderControllerTest {
                         .map(p -> new CreateOrderCommand.ProductItem(p.productId(), p.quantity()))
                         .toList(),
                     new CreateOrderCommand.DeliveryAddress("12345", "서울시 강남구 테헤란로 1", "101호"),
-                    "홍길동", "U12345678"
+                    "홍길동"
                 ),
                 keycloakId
             );

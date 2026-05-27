@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import boxoffice.orderservice.application.client.CompanyProductFeignClient;
 import boxoffice.orderservice.application.client.UserFeignClient;
 import boxoffice.orderservice.application.client.dto.UserDetailInfo;
+import boxoffice.orderservice.application.client.dto.request.StockDeductRequest;
 import boxoffice.orderservice.application.client.dto.response.InternalCompanyHub;
 import boxoffice.orderservice.application.client.dto.response.StockDeductResponse;
 import boxoffice.orderservice.application.service.dto.CreateOrderCommand;
@@ -62,7 +63,7 @@ class OrderCreateServiceTest {
             supplierId, receiverId, "조심히 와주세요",
             List.of(new CreateOrderCommand.ProductItem(productId, 10)),
             new CreateOrderCommand.DeliveryAddress("12345", "서울시 강남구 테헤란로 1", "101호"),
-            "홍길동", "U12345678"
+            "홍길동"
         );
 
         stockDeductResponse = Mockito.mock(StockDeductResponse.class);
@@ -87,7 +88,8 @@ class OrderCreateServiceTest {
             UserDetailInfo user = Mockito.mock(UserDetailInfo.class);
             given(user.role()).willReturn("MASTER");
             given(userFeignClient.getUserById(requesterId)).willReturn(user);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList())).willReturn(stockDeductResponse);
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
+                .willReturn(stockDeductResponse);
             given(orderCommandService.saveOrder(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(orderResult);
 
@@ -97,7 +99,7 @@ class OrderCreateServiceTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.status()).isEqualTo("PENDING");
-            verify(companyProductFeignClient).deductStocks(any(UUID.class), anyList());
+            verify(companyProductFeignClient).deductStocks(any(UUID.class), any(StockDeductRequest.class));
             verify(orderCommandService).saveOrder(any(), any(), any(), any(), any(), any(), any(), any());
         }
 
@@ -110,7 +112,8 @@ class OrderCreateServiceTest {
             given(user.role()).willReturn("COMPANY_MANAGER");
             given(user.companyId()).willReturn(companyId);
             given(userFeignClient.getUserById(requesterId)).willReturn(user);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList())).willReturn(stockDeductResponse);
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
+                .willReturn(stockDeductResponse);
             given(orderCommandService.saveOrder(any(), any(), any(UUID.class), any(), any(), any(), any(), any()))
                 .willReturn(orderResult);
 
@@ -136,10 +139,11 @@ class OrderCreateServiceTest {
 
             InternalCompanyHub hubs = Mockito.mock(InternalCompanyHub.class);
             given(hubs.supplierHubId()).willReturn(sourceHubId);
-            // receiverHubId: supplierHubId 매칭 시 short-circuit → lenient 처리
+            // supplierHubId 매칭 시 short-circuit → receiverHubId는 미호출
             Mockito.lenient().when(hubs.receiverHubId()).thenReturn(destinationHubId);
             given(companyProductFeignClient.getCompanyById(supplierId, receiverId)).willReturn(hubs);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList())).willReturn(stockDeductResponse);
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
+                .willReturn(stockDeductResponse);
             given(orderCommandService.saveOrder(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(orderResult);
 
@@ -170,7 +174,7 @@ class OrderCreateServiceTest {
                 .isInstanceOf(BaseException.class)
                 .hasFieldOrPropertyWithValue("errorCode", OrderErrorCode.UNAUTHORIZED_HUB_ORDER);
 
-            verify(companyProductFeignClient, never()).deductStocks(any(), anyList());
+            verify(companyProductFeignClient, never()).deductStocks(any(), any(StockDeductRequest.class));
         }
 
         @Test
@@ -190,7 +194,7 @@ class OrderCreateServiceTest {
         @Test
         @DisplayName("[예외] 유저 서비스 호출 실패(Fallback) 시 USER_SERVICE_UNAVAILABLE 발생")
         void exception_user_service_fallback() {
-            // given - Fallback이 USER_SERVICE_UNAVAILABLE을 던지도록 설정
+            // given
             given(userFeignClient.getUserById(anyString()))
                 .willThrow(new BaseException(OrderErrorCode.USER_SERVICE_UNAVAILABLE));
 
@@ -207,7 +211,7 @@ class OrderCreateServiceTest {
             UserDetailInfo user = Mockito.mock(UserDetailInfo.class);
             given(user.role()).willReturn("MASTER");
             given(userFeignClient.getUserById(requesterId)).willReturn(user);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList()))
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
                 .willThrow(new BaseException(OrderErrorCode.STOCK_DEDUCT_FAILED));
 
             // when & then
@@ -225,7 +229,8 @@ class OrderCreateServiceTest {
             UserDetailInfo user = Mockito.mock(UserDetailInfo.class);
             given(user.role()).willReturn("MASTER");
             given(userFeignClient.getUserById(requesterId)).willReturn(user);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList())).willReturn(stockDeductResponse);
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
+                .willReturn(stockDeductResponse);
             given(orderCommandService.saveOrder(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willThrow(new RuntimeException("DB Timeout"));
 
@@ -244,7 +249,8 @@ class OrderCreateServiceTest {
             UserDetailInfo user = Mockito.mock(UserDetailInfo.class);
             given(user.role()).willReturn("MASTER");
             given(userFeignClient.getUserById(requesterId)).willReturn(user);
-            given(companyProductFeignClient.deductStocks(any(UUID.class), anyList())).willReturn(stockDeductResponse);
+            given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
+                .willReturn(stockDeductResponse);
             given(orderCommandService.saveOrder(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willThrow(new RuntimeException("DB Timeout"));
             doThrow(new RuntimeException("Feign Timeout")).when(companyProductFeignClient).restoreStocks(anyList());

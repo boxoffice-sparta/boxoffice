@@ -40,7 +40,7 @@ public class OrderEventListener {
                   addr.zipCode(), addr.address(), addr.detailAddress()
               ),
               event.recipientName(),
-              event.recipientSlackId()
+              null
           )
       );
     } catch (Exception e) {

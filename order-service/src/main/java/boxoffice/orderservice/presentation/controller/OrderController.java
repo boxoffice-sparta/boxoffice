@@ -45,8 +45,7 @@ public class OrderController {
                 dto.deliveryAddress().address(),
                 dto.deliveryAddress().detailAddress()
             ),
-            dto.recipientName(),
-            dto.recipientSlackId()
+            dto.recipientName()
         );
     }
 }
