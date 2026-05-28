@@ -38,9 +38,7 @@ public class HubController {
             @Valid
             @RequestBody HubCreateRequestDto request
     ) {
-        if (!"MASTER".equals(role)) {
-            throw new BaseException(CommonErrorCode.FORBIDDEN);
-        }
+        validateMasterRole(role);
         HubCreateResponseDto response = hubService.createHub(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(HttpStatus.CREATED, response));
@@ -73,9 +71,7 @@ public class HubController {
             @Valid
             @RequestBody HubUpdateRequestDto request
     ) {
-        if (!"MASTER".equals(role)) {
-            throw new BaseException(CommonErrorCode.FORBIDDEN);
-        }
+        validateMasterRole(role);
         return ResponseEntity.ok(ApiResponse.success(hubService.updateHub(hubId, request)));
     }
 
@@ -86,9 +82,7 @@ public class HubController {
             @PathVariable UUID hubId,
             @Valid @RequestBody HubClosingRequestDto request
     ) {
-        if (!"MASTER".equals(role)) {
-            throw new BaseException(CommonErrorCode.FORBIDDEN);
-        }
+        validateMasterRole(role);
         return ResponseEntity.ok(ApiResponse.success(hubService.startClosingHub(hubId, request)));
     }
 
@@ -98,9 +92,13 @@ public class HubController {
             @RequestHeader("X-User-Role") String role,
             @PathVariable UUID hubId
     ) {
+        validateMasterRole(role);
+        return ResponseEntity.ok(ApiResponse.success(hubService.deactivateHub(hubId)));
+    }
+
+    private void validateMasterRole(String role) {
         if (!"MASTER".equals(role)) {
             throw new BaseException(CommonErrorCode.FORBIDDEN);
         }
-        return ResponseEntity.ok(ApiResponse.success(hubService.deactivateHub(hubId)));
     }
 }
