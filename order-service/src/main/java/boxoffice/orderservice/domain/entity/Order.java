@@ -3,7 +3,6 @@ package boxoffice.orderservice.domain.entity;
 import boxoffice.orderservice.domain.enums.OrderStatus;
 import boxoffice.orderservice.domain.vo.TotalPrice;
 import boxoffice.orderservice.infra.exception.OrderDomainErrorCode;
-import boxoffice.orderservice.infra.exception.OrderErrorCode;
 import com.boxoffice.common.entity.BaseEntity;
 import com.boxoffice.common.exception.BaseException;
 import jakarta.persistence.CollectionTable;
@@ -48,6 +47,12 @@ public class Order extends BaseEntity {
   @Column(name = "receiver_id", nullable = false)
   private UUID receiverId;
 
+  @Column(name = "source_hub_id", nullable = false)
+  private UUID sourceHubId;
+
+  @Column(name = "destination_hub_id", nullable = false)
+  private UUID destinationHubId;
+
   @Column(name = "delivery_id")
   private UUID deliveryId;
 
@@ -76,22 +81,34 @@ public class Order extends BaseEntity {
   private List<OrderProduct> orderProducts = new ArrayList<>();
 
   public static Order create(
+      UUID orderId,
       UUID supplierId,
       UUID receiverId,
+      UUID sourceHubId,
+      UUID destinationHubId,
       String request,
       List<OrderProduct> orderProducts) {
     validateCompanyId(supplierId);
     validateCompanyId(receiverId);
+    validateHubId(sourceHubId);
+    validateHubId(destinationHubId);
     validateOrderProducts(orderProducts);
 
     Order order = new Order();
+    order.assignId(orderId);
     order.supplierId = supplierId;
     order.receiverId = receiverId;
+    order.sourceHubId = sourceHubId;
+    order.destinationHubId = destinationHubId;
     order.request = request;
     order.status = OrderStatus.PENDING;
     order.orderProducts = new ArrayList<>(orderProducts);
     order.totalPrice = TotalPrice.create(order.calculateTotalPrice());
     return order;
+  }
+
+  public void linkDelivery(UUID deliveryId) {
+    this.deliveryId = deliveryId;
   }
 
   public void updateOrderRequest(String request) {
@@ -128,5 +145,10 @@ public class Order extends BaseEntity {
   private static void validateCompanyId(UUID companyId) {
     if (companyId == null)
       throw new BaseException(OrderDomainErrorCode.INVALID_COMPANY_ID);
+  }
+
+  private static void validateHubId(UUID hubId) {
+    if (hubId == null)
+      throw new BaseException(OrderDomainErrorCode.MISSING_HUB_ID);
   }
 }
