@@ -9,7 +9,6 @@ import com.boxoffice.hubservice.hubroute.dto.response.HubRouteCreateResponseDto;
 import com.boxoffice.hubservice.hubroute.entity.HubRoute;
 import com.boxoffice.hubservice.hubroute.repository.HubRouteRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,10 +50,6 @@ public class HubRouteService {
                 .estimatedDistanceKm(BigDecimal.valueOf(request.estimatedDistanceKm()))
                 .build();
 
-        try {
-            return HubRouteCreateResponseDto.from(hubRouteRepository.save(route), originHub, destinationHub);
-        } catch (DataIntegrityViolationException e) {
-            throw new BaseException(HubErrorCode.DUPLICATE_HUB_ROUTE);
-        }
+        return HubRouteCreateResponseDto.from(hubRouteRepository.save(route), originHub, destinationHub);
     }
 }
