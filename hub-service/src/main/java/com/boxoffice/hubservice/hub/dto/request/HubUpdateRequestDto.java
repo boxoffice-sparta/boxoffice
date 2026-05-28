@@ -14,4 +14,4 @@ public record HubUpdateRequestDto(
         @DecimalMin("-180.0") @DecimalMax("180.0") Double longitude,
         @Positive(message = "최대 수용량은 양수여야 합니다.")
         Integer capacity
-) {}
+) { }

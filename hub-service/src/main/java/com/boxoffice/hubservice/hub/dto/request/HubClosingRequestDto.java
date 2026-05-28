@@ -4,4 +4,4 @@ import jakarta.validation.constraints.NotBlank;
 
 public record HubClosingRequestDto(
         @NotBlank String reason
-) {}
+) { }
