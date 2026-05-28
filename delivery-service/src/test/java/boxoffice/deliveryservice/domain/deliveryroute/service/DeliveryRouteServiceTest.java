@@ -1,6 +1,6 @@
 package boxoffice.deliveryservice.domain.deliveryroute.service;
 
-import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto.AddressRequest;
+import com.boxoffice.common.entity.AddressVO;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRoute;
@@ -42,7 +42,7 @@ class DeliveryRouteServiceTest {
     private Delivery createDelivery() {
         return Delivery.create(
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                new AddressRequest("12345", "서울시 송파구 송파대로 55", "101호").toAddressVO(),
+                new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
                 "홍길동", "U12345"
         );
     }

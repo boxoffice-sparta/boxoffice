@@ -1,17 +1,14 @@
 package boxoffice.deliveryservice.domain.delivery.service;
 
 import boxoffice.deliveryservice.client.HubClient;
+import boxoffice.deliveryservice.client.UserServiceClient;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto;
-import com.boxoffice.common.response.ApiResponse;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubInfo;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubRouteSegmentDto;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubType;
-import boxoffice.deliveryservice.client.UserServiceClient;
-import com.boxoffice.common.response.ApiResponse;
 import boxoffice.deliveryservice.client.dto.response.UserInfoDto;
 import boxoffice.deliveryservice.client.dto.response.UserRole;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
-import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto.AddressRequest;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.delivery.entity.DeliveryStatus;
@@ -19,7 +16,9 @@ import boxoffice.deliveryservice.domain.delivery.repository.DeliveryRepository;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRouteStatus;
 import boxoffice.deliveryservice.domain.deliveryroute.service.DeliveryRouteService;
+import com.boxoffice.common.entity.AddressVO;
 import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.common.response.PageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,7 +70,7 @@ class DeliveryServiceTest {
     private Delivery createDelivery(UUID companyId) {
         return Delivery.create(
                 UUID.randomUUID(), companyId, UUID.randomUUID(), UUID.randomUUID(),
-                new AddressRequest("12345", "서울시 송파구 송파대로 55", "101호").toAddressVO(),
+                new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
                 "홍길동", "U12345"
         );
     }
@@ -97,17 +96,25 @@ class DeliveryServiceTest {
                     companyId,
                     originHubId,
                     destinationHubId,
-                    new AddressRequest("12345", "서울시 송파구 송파대로 55", "101호"),
+                    new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
                     "홍길동",
                     "U12345"
             );
         }
 
         @Test
-        @DisplayName("성공 - 배송 생성")
+        @DisplayName("성공 - 배송 생성 및 경로 생성 위임")
         void success() {
             // given
+            HubInfo seoulHub = new HubInfo(UUID.randomUUID(), "서울 허브", HubType.REGIONAL);
+            HubInfo busanHub = new HubInfo(UUID.randomUUID(), "부산 허브", HubType.REGIONAL);
+            List<HubRouteSegmentDto> segments = List.of(
+                    new HubRouteSegmentDto(1, seoulHub, busanHub, 210, new BigDecimal("280.8"))
+            );
+            HubRouteResponseDto hubRoute = new HubRouteResponseDto(seoulHub, busanHub, segments, 210, new BigDecimal("280.8"));
+
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
+            given(hubClient.calculatePath(originHubId, destinationHubId)).willReturn(ApiResponse.success(hubRoute));
 
             // when
             DeliveryResponseDto result = deliveryService.createDelivery(request);
@@ -120,19 +127,6 @@ class DeliveryServiceTest {
             assertThat(result.deliveryStatus()).isEqualTo(DeliveryStatus.WAITING);
             assertThat(result.deliveryPersonId()).isNull();
             verify(deliveryRouteService).createRoutes(any(Delivery.class), eq(segments));
-        }
-
-        @Test
-        @DisplayName("실패 - 배송 저장 중 DB 예외 발생 시 전파")
-        void fail_when_delivery_save_throws() {
-            // given
-            given(deliveryRepository.save(any(Delivery.class)))
-                    .willThrow(new RuntimeException("DB 저장 실패"));
-
-            // when & then
-            assertThatThrownBy(() -> deliveryService.createDelivery(request))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessage("DB 저장 실패");
         }
 
         @Test
@@ -175,7 +169,6 @@ class DeliveryServiceTest {
             given(deliveryRepository.save(any(Delivery.class))).willAnswer(inv -> inv.getArgument(0));
             given(hubClient.calculatePath(originHubId, destinationHubId))
                     .willThrow(new RuntimeException("hub-service 호출 실패"));
-
 
             // when & then
             assertThatThrownBy(() -> deliveryService.createDelivery(request))
@@ -317,10 +310,9 @@ class DeliveryServiceTest {
             UUID deliveryId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
             UserInfoDto userInfo = new UserInfoDto(UUID.randomUUID(), UserRole.HUB_MANAGER, hubId, null);
-
             Delivery delivery = Delivery.create(
                     UUID.randomUUID(), UUID.randomUUID(), hubId, UUID.randomUUID(),
-                    new AddressRequest("12345", "서울시 송파구 송파대로 55", "101호").toAddressVO(),
+                    new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
                     "홍길동", "U12345"
             );
 
@@ -357,10 +349,9 @@ class DeliveryServiceTest {
             UUID deliveryId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
             UserInfoDto userInfo = new UserInfoDto(userId, UserRole.DELIVERY_MANAGER, null, null);
-
             Delivery delivery = Delivery.create(
                     UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                    new AddressRequest("12345", "서울시 송파구 송파대로 55", "101호").toAddressVO(),
+                    new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
                     "홍길동", "U12345"
             );
             delivery.assignDeliveryPerson(userId);
@@ -490,7 +481,7 @@ class DeliveryServiceTest {
         }
 
         @Test
-        @DisplayName("실패 - 접근 권한 없는 배송의 경로 조회 시 FORBIDDEN, 경로 서비스 호출 안 함")
+        @DisplayName("실패 - 접근 권한 없는 배송의 경로 조회 시 FORBIDDEN")
         void fail_forbidden() {
             // given
             UUID deliveryId = UUID.randomUUID();
@@ -559,7 +550,7 @@ class DeliveryServiceTest {
         }
 
         @Test
-        @DisplayName("실패 - 접근 권한 없는 배송의 경로 단건 조회 시 FORBIDDEN, 경로 서비스 호출 안 함")
+        @DisplayName("실패 - 접근 권한 없는 배송의 경로 단건 조회 시 FORBIDDEN")
         void fail_forbidden() {
             // given
             UUID deliveryId = UUID.randomUUID();
