@@ -24,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -237,6 +239,28 @@ class HubRouteServiceTest {
                 .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
                         .isEqualTo(HubErrorCode.HUB_INACTIVE_IN_PATH));
         verify(hubRouteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("동시 요청으로 DB 제약 위반 시 DUPLICATE_HUB_ROUTE 예외 발생")
+    void createHubRoute_dataIntegrityViolation_throwsDuplicateRouteException() {
+        // given
+        Hub origin = buildHub("서울특별시 센터", HubType.CENTRAL);
+        Hub destination = buildHub("대전광역시 센터", HubType.REGIONAL);
+        UUID originId = origin.getId();
+        UUID destinationId = destination.getId();
+        HubRouteCreateRequestDto request = new HubRouteCreateRequestDto(originId, destinationId, 120, 160.5);
+
+        given(hubRouteRepository.existsByOriginHubIdAndDestinationHubId(originId, destinationId)).willReturn(false);
+        given(hubRepository.findById(originId)).willReturn(Optional.of(origin));
+        given(hubRepository.findById(destinationId)).willReturn(Optional.of(destination));
+        given(hubRouteRepository.save(any(HubRoute.class))).willThrow(new DataIntegrityViolationException("duplicate"));
+
+        // when & then
+        assertThatThrownBy(() -> hubRouteService.createHubRoute(request))
+                .isInstanceOf(BaseException.class)
+                .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                        .isEqualTo(HubErrorCode.DUPLICATE_HUB_ROUTE));
     }
 
     @Test
