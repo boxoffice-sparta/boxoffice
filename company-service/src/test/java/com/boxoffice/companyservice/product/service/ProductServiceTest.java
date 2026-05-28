@@ -4,13 +4,11 @@ import com.boxoffice.common.exception.BaseException;
 import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
-import com.boxoffice.companyservice.company.repository.CompanyRepository;
+import com.boxoffice.companyservice.company.service.CompanyService;
 import com.boxoffice.companyservice.product.domain.PriceVO;
 import com.boxoffice.companyservice.product.dto.request.ProductCreateRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductStockDeductRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductStockItemRequestDto;
-import com.boxoffice.companyservice.product.dto.request.ProductStockRequestDto;
-import com.boxoffice.companyservice.product.dto.request.ProductStockRestoreRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductUpdateRequestDto;
 import com.boxoffice.companyservice.product.dto.response.ProductCreateResponseDto;
 import com.boxoffice.companyservice.product.dto.response.HubStockCountResponseDto;
@@ -58,10 +56,10 @@ class ProductServiceTest {
     private ProductService productService;
 
     @Mock
-    private CompanyRepository companyRepository;
+    private ProductRepository productRepository;
 
     @Mock
-    private ProductRepository productRepository;
+    private CompanyService companyService;
 
     @Mock
     private StringRedisTemplate redisTemplate;
@@ -78,7 +76,6 @@ class ProductServiceTest {
         Company company = createCompany(companyId);
         ProductCreateRequestDto request = createRequest(" 테스트 상품 ", 10000, 50);
 
-        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
             ReflectionTestUtils.setField(product, "id", productId);
@@ -86,13 +83,12 @@ class ProductServiceTest {
         });
 
         // when
-        ProductCreateResponseDto response = productService.createProduct(companyId, request);
+        ProductCreateResponseDto response = productService.createProduct(company, request);
 
         // then
         ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
-        verify(companyRepository).findById(companyId);
         verify(productRepository).save(productCaptor.capture());
-        verifyNoMoreInteractions(companyRepository, productRepository);
+        verifyNoMoreInteractions(productRepository);
 
         Product savedProduct = productCaptor.getValue();
         assertThat(savedProduct.getName()).isEqualTo("테스트 상품");
@@ -134,8 +130,8 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("실패 - 조회 조건에 맞는 상품이 없으면 수정할 수 없다")
-    void updateProductWhenProductNotFoundThrowsNotFound() {
+    @DisplayName("실패 - 존재하지 않는 상품은 수정할 수 없다")
+    void updateProductWithUnknownProductThrowsNotFound() {
         // given
         UUID companyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
@@ -149,6 +145,44 @@ class ProductServiceTest {
         // then
         assertProductNotFound(throwable);
         verify(productRepository).findProduct(companyId, productId);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 삭제된 상품은 수정할 수 없다")
+    void updateDeletedProductThrowsNotFound() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        ProductUpdateRequestDto request = createUpdateRequest("수정 상품", 15000, 30);
+
+        when(productRepository.findProduct(companyId, productId)).thenReturn(Optional.empty());
+
+        // when
+        Throwable throwable = catchThrowable(() -> productService.updateProduct(companyId, productId, request));
+
+        // then
+        assertProductNotFound(throwable);
+        verify(productRepository).findProduct(companyId, productId);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 다른 업체 상품은 수정할 수 없다")
+    void updateProductWithDifferentCompanyThrowsNotFound() {
+        // given
+        UUID pathCompanyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        ProductUpdateRequestDto request = createUpdateRequest("수정 상품", 15000, 30);
+
+        when(productRepository.findProduct(pathCompanyId, productId)).thenReturn(Optional.empty());
+
+        // when
+        Throwable throwable = catchThrowable(() -> productService.updateProduct(pathCompanyId, productId, request));
+
+        // then
+        assertProductNotFound(throwable);
+        verify(productRepository).findProduct(pathCompanyId, productId);
         verifyNoMoreInteractions(productRepository);
     }
 
@@ -176,8 +210,8 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("실패 - 조회 조건에 맞는 상품이 없으면 삭제할 수 없다")
-    void deleteProductWhenProductNotFoundThrowsNotFound() {
+    @DisplayName("실패 - 존재하지 않는 상품은 삭제할 수 없다")
+    void deleteProductWithUnknownProductThrowsNotFound() {
         // given
         UUID companyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
@@ -191,6 +225,44 @@ class ProductServiceTest {
         // then
         assertProductNotFound(throwable);
         verify(productRepository).findProduct(companyId, productId);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 삭제된 상품은 삭제할 수 없다")
+    void deleteDeletedProductThrowsNotFound() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID deletedBy = UUID.randomUUID();
+
+        when(productRepository.findProduct(companyId, productId)).thenReturn(Optional.empty());
+
+        // when
+        Throwable throwable = catchThrowable(() -> productService.deleteProduct(companyId, productId, deletedBy));
+
+        // then
+        assertProductNotFound(throwable);
+        verify(productRepository).findProduct(companyId, productId);
+        verifyNoMoreInteractions(productRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 다른 업체 상품은 삭제할 수 없다")
+    void deleteProductWithDifferentCompanyThrowsNotFound() {
+        // given
+        UUID pathCompanyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        UUID deletedBy = UUID.randomUUID();
+
+        when(productRepository.findProduct(pathCompanyId, productId)).thenReturn(Optional.empty());
+
+        // when
+        Throwable throwable = catchThrowable(() -> productService.deleteProduct(pathCompanyId, productId, deletedBy));
+
+        // then
+        assertProductNotFound(throwable);
+        verify(productRepository).findProduct(pathCompanyId, productId);
         verifyNoMoreInteractions(productRepository);
     }
 
@@ -314,7 +386,7 @@ class ProductServiceTest {
     void checkStocksSucceedsWithEnoughStock() {
         UUID productId = UUID.randomUUID();
         Product product = createProduct(productId, createCompany(UUID.randomUUID()));
-        ProductStockRequestDto request = createStockRequest(productId, 10);
+        List<ProductStockItemRequestDto> request = createStockRequest(productId, 10);
 
         when(productRepository.findAllById(List.of(productId))).thenReturn(List.of(product));
 
@@ -328,7 +400,7 @@ class ProductServiceTest {
     @DisplayName("실패 - 잘못된 수량이면 재고 확인을 거부한다")
     void checkStocksThrowsWhenQuantityIsInvalid() {
         UUID productId = UUID.randomUUID();
-        ProductStockRequestDto request = createStockRequest(productId, 0);
+        List<ProductStockItemRequestDto> request = createStockRequest(productId, 0);
 
         Throwable throwable = catchThrowable(() -> productService.checkStocks(request));
 
@@ -343,7 +415,7 @@ class ProductServiceTest {
     void checkStocksReturnsNotOrderableDetailWhenStockIsInsufficient() {
         UUID productId = UUID.randomUUID();
         Product product = createProduct(productId, createCompany(UUID.randomUUID()));
-        ProductStockRequestDto request = createStockRequest(productId, 60);
+        List<ProductStockItemRequestDto> request = createStockRequest(productId, 60);
 
         when(productRepository.findAllById(List.of(productId))).thenReturn(List.of(product));
 
@@ -360,16 +432,22 @@ class ProductServiceTest {
     @DisplayName("성공 - 주문 상품 재고를 비관적 락 조회 후 차감한다")
     void deductStocksDeductsStockWithLock() {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        Product product = createProduct(productId, createCompany(UUID.randomUUID()));
-        ProductStockDeductRequestDto request = createDeductRequest(orderId, productId, 10);
+        Company supplier = createCompany(supplierId);
+        Company receiver = createCompany(receiverId);
+        Product product = createProduct(productId, supplier);
+        ProductStockDeductRequestDto request = createDeductRequest(supplierId, receiverId, productId, 10);
 
+        when(companyService.getCompanyEntity(supplierId)).thenReturn(supplier);
+        when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(productId))).thenReturn(List.of(product));
 
-        productService.deductStocks(request);
+        productService.deductStocks(orderId, request);
 
         verify(valueOperations).setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5));
         verify(valueOperations).set(doneKey(orderId, "deduct"), "1", Duration.ofDays(7));
@@ -382,20 +460,26 @@ class ProductServiceTest {
     @DisplayName("실패 - 여러 상품 차감 중 하나라도 재고가 부족하면 차감하지 않는다")
     void deductStocksDoesNotDeductAnyProductWhenOneProductIsInsufficient() {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID firstProductId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID secondProductId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        Product firstProduct = createProduct(firstProductId, createCompany(UUID.randomUUID()));
-        Product secondProduct = createProduct(secondProductId, createCompany(UUID.randomUUID()));
-        ProductStockDeductRequestDto request = createDeductRequest(orderId,
+        Company supplier = createCompany(supplierId);
+        Company receiver = createCompany(receiverId);
+        Product firstProduct = createProduct(firstProductId, supplier);
+        Product secondProduct = createProduct(secondProductId, supplier);
+        ProductStockDeductRequestDto request = createDeductRequest(supplierId, receiverId,
                 List.of(createStockItem(firstProductId, 10), createStockItem(secondProductId, 60)));
 
+        when(companyService.getCompanyEntity(supplierId)).thenReturn(supplier);
+        when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(firstProductId, secondProductId)))
                 .thenReturn(List.of(firstProduct, secondProduct));
 
-        Throwable throwable = catchThrowable(() -> productService.deductStocks(request));
+        Throwable throwable = catchThrowable(() -> productService.deductStocks(orderId, request));
 
         assertThat(throwable)
                 .isInstanceOfSatisfying(BaseException.class,
@@ -410,14 +494,20 @@ class ProductServiceTest {
     @DisplayName("실패 - 처리 중인 재고 차감 요청은 거부한다")
     void deductStocksThrowsWhenOperationIsInProgress() {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        ProductStockDeductRequestDto request = createDeductRequest(orderId, productId, 10);
+        Company supplier = createCompany(supplierId);
+        Company receiver = createCompany(receiverId);
+        ProductStockDeductRequestDto request = createDeductRequest(supplierId, receiverId, productId, 10);
 
+        when(companyService.getCompanyEntity(supplierId)).thenReturn(supplier);
+        when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(false);
 
-        Throwable throwable = catchThrowable(() -> productService.deductStocks(request));
+        Throwable throwable = catchThrowable(() -> productService.deductStocks(orderId, request));
 
         assertThat(throwable)
                 .isInstanceOfSatisfying(BaseException.class,
@@ -429,20 +519,26 @@ class ProductServiceTest {
     @DisplayName("성공 - 재고 차감 락 조회는 productId를 정렬해서 요청한다")
     void deductStocksSortsProductIdsBeforeLockQuery() {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID firstProductId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         UUID secondProductId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-        Product firstProduct = createProduct(firstProductId, createCompany(UUID.randomUUID()));
-        Product secondProduct = createProduct(secondProductId, createCompany(UUID.randomUUID()));
-        ProductStockDeductRequestDto request = createDeductRequest(orderId,
+        Company supplier = createCompany(supplierId);
+        Company receiver = createCompany(receiverId);
+        Product firstProduct = createProduct(firstProductId, supplier);
+        Product secondProduct = createProduct(secondProductId, supplier);
+        ProductStockDeductRequestDto request = createDeductRequest(supplierId, receiverId,
                 List.of(createStockItem(secondProductId, 10), createStockItem(firstProductId, 10)));
 
+        when(companyService.getCompanyEntity(supplierId)).thenReturn(supplier);
+        when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(firstProductId, secondProductId)))
                 .thenReturn(List.of(firstProduct, secondProduct));
 
-        productService.deductStocks(request);
+        productService.deductStocks(orderId, request);
 
         verify(productRepository).findAllByIdInForUpdate(List.of(firstProductId, secondProductId));
     }
@@ -451,14 +547,20 @@ class ProductServiceTest {
     @DisplayName("성공 - 같은 orderId 차감 요청은 재고를 다시 차감하지 않는다")
     void deductStocksSkipsDuplicatedOrderId() {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        Product product = createProduct(productId, createCompany(UUID.randomUUID()));
-        ProductStockDeductRequestDto request = createDeductRequest(orderId, productId, 10);
+        Company supplier = createCompany(supplierId);
+        Company receiver = createCompany(receiverId);
+        Product product = createProduct(productId, supplier);
+        ProductStockDeductRequestDto request = createDeductRequest(supplierId, receiverId, productId, 10);
 
+        when(companyService.getCompanyEntity(supplierId)).thenReturn(supplier);
+        when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(true);
         when(productRepository.findAllById(List.of(productId))).thenReturn(List.of(product));
 
-        productService.deductStocks(request);
+        productService.deductStocks(orderId, request);
 
         verify(redisTemplate).hasKey(doneKey(orderId, "deduct"));
         verify(productRepository).findAllById(List.of(productId));
@@ -470,12 +572,12 @@ class ProductServiceTest {
     void restoreStocksSkipsDuplicatedOrderId() {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        ProductStockRestoreRequestDto request = createRestoreRequest(orderId, productId, 10);
+        List<ProductStockItemRequestDto> request = createRestoreRequest(productId, 10);
 
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(true);
         when(redisTemplate.hasKey(doneKey(orderId, "restore"))).thenReturn(true);
 
-        productService.restoreStocks(request);
+        productService.restoreStocks(orderId, request);
 
         verify(redisTemplate).hasKey(doneKey(orderId, "deduct"));
         verify(redisTemplate).hasKey(doneKey(orderId, "restore"));
@@ -488,7 +590,7 @@ class ProductServiceTest {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         Product product = createProduct(productId, createCompany(UUID.randomUUID()));
-        ProductStockRestoreRequestDto request = createRestoreRequest(orderId, productId, 10);
+        List<ProductStockItemRequestDto> request = createRestoreRequest(productId, 10);
 
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(true);
         when(redisTemplate.hasKey(doneKey(orderId, "restore"))).thenReturn(false);
@@ -496,7 +598,7 @@ class ProductServiceTest {
         when(valueOperations.setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(5))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(productId))).thenReturn(List.of(product));
 
-        productService.restoreStocks(request);
+        productService.restoreStocks(orderId, request);
 
         verify(valueOperations).setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(5));
         verify(valueOperations).set(doneKey(orderId, "restore"), "1", Duration.ofDays(7));
@@ -510,11 +612,11 @@ class ProductServiceTest {
     void restoreStocksWithoutDeductHistoryThrowsInvalidInput() {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        ProductStockRestoreRequestDto request = createRestoreRequest(orderId, productId, 10);
+        List<ProductStockItemRequestDto> request = createRestoreRequest(productId, 10);
 
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
 
-        Throwable throwable = catchThrowable(() -> productService.restoreStocks(request));
+        Throwable throwable = catchThrowable(() -> productService.restoreStocks(orderId, request));
 
         assertThat(throwable)
                 .isInstanceOfSatisfying(BaseException.class,
@@ -572,31 +674,37 @@ class ProductServiceTest {
         return request;
     }
 
-    private ProductStockRequestDto createStockRequest(UUID productId, Integer quantity) {
-        ProductStockRequestDto request = new ProductStockRequestDto();
-        ReflectionTestUtils.setField(request, "items", List.of(createStockItem(productId, quantity)));
-        return request;
+    private List<ProductStockItemRequestDto> createStockRequest(UUID productId, Integer quantity) {
+        return List.of(createStockItem(productId, quantity));
     }
 
-    private ProductStockDeductRequestDto createDeductRequest(UUID orderId, UUID productId, Integer quantity) {
+    private ProductStockDeductRequestDto createDeductRequest(
+            UUID supplierId,
+            UUID receiverId,
+            UUID productId,
+            Integer quantity
+    ) {
         ProductStockDeductRequestDto request = new ProductStockDeductRequestDto();
-        ReflectionTestUtils.setField(request, "orderId", orderId);
-        ReflectionTestUtils.setField(request, "items", List.of(createStockItem(productId, quantity)));
+        ReflectionTestUtils.setField(request, "supplierId", supplierId);
+        ReflectionTestUtils.setField(request, "receiverId", receiverId);
+        ReflectionTestUtils.setField(request, "products", List.of(createStockItem(productId, quantity)));
         return request;
     }
 
-    private ProductStockDeductRequestDto createDeductRequest(UUID orderId, List<ProductStockItemRequestDto> items) {
+    private ProductStockDeductRequestDto createDeductRequest(
+            UUID supplierId,
+            UUID receiverId,
+            List<ProductStockItemRequestDto> items
+    ) {
         ProductStockDeductRequestDto request = new ProductStockDeductRequestDto();
-        ReflectionTestUtils.setField(request, "orderId", orderId);
-        ReflectionTestUtils.setField(request, "items", items);
+        ReflectionTestUtils.setField(request, "supplierId", supplierId);
+        ReflectionTestUtils.setField(request, "receiverId", receiverId);
+        ReflectionTestUtils.setField(request, "products", items);
         return request;
     }
 
-    private ProductStockRestoreRequestDto createRestoreRequest(UUID orderId, UUID productId, Integer quantity) {
-        ProductStockRestoreRequestDto request = new ProductStockRestoreRequestDto();
-        ReflectionTestUtils.setField(request, "orderId", orderId);
-        ReflectionTestUtils.setField(request, "items", List.of(createStockItem(productId, quantity)));
-        return request;
+    private List<ProductStockItemRequestDto> createRestoreRequest(UUID productId, Integer quantity) {
+        return List.of(createStockItem(productId, quantity));
     }
 
     private ProductStockItemRequestDto createStockItem(UUID productId, Integer quantity) {

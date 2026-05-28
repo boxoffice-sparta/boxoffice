@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,10 +43,10 @@ public class CompanyInternalController {
     }
 
     @Operation(summary = "업체별 허브 조회", description = "주문 생성 연동을 위해 공급 업체와 수령 업체의 소속 허브를 조회합니다.")
-    @GetMapping("/hubs")
+    @GetMapping("/hubs/{supplierId}/{receiverId}")
     public ResponseEntity<ApiResponse<InternalCompanyHubResponseDto>> getCompanyHubs(
-            @RequestParam("supplierId") UUID supplierId,
-            @RequestParam("receiverId") UUID receiverId
+            @PathVariable("supplierId") UUID supplierId,
+            @PathVariable("receiverId") UUID receiverId
     ) {
         InternalCompanyHubResponseDto response = companyInternalFacade.getCompanyHubs(supplierId, receiverId);
         log.info("Internal company hubs requested. supplierId={}, receiverId={}", supplierId, receiverId);

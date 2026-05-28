@@ -73,9 +73,7 @@ class CompanyInternalControllerTest {
         when(companyInternalFacade.getCompanyHubs(supplierId, receiverId))
                 .thenReturn(new InternalCompanyHubResponseDto(supplierHubId, receiverHubId));
 
-        mockMvc.perform(get("/internal/companies/hubs")
-                        .param("supplierId", supplierId.toString())
-                        .param("receiverId", receiverId.toString()))
+        mockMvc.perform(get("/internal/v1/companies/hubs/{supplierId}/{receiverId}", supplierId, receiverId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
                 .andExpect(jsonPath("$.message", is("SUCCESS")))

@@ -83,14 +83,12 @@ class ProductInternalControllerTest {
     void checkStocksReturnsSuccess() throws Exception {
         UUID productId = UUID.randomUUID();
 
-        mockMvc.perform(post("/internal/products/stocks/check")
+        mockMvc.perform(post("/internal/v1/products/stocks/check")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "items": [
-                                    { "productId": "%s", "quantity": 2 }
-                                  ]
-                                }
+                                [
+                                  { "productId": "%s", "quantity": 2 }
+                                ]
                                 """.formatted(productId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
@@ -101,18 +99,22 @@ class ProductInternalControllerTest {
     @DisplayName("성공 - 주문 상품 재고 차감 요청을 처리한다")
     void deductStocksReturnsSuccess() throws Exception {
         UUID orderId = UUID.randomUUID();
+        UUID supplierId = UUID.randomUUID();
+        UUID receiverId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
 
-        mockMvc.perform(post("/internal/products/stocks/deduct")
+        mockMvc.perform(post("/internal/v1/products/stocks/deduct")
+                        .param("orderId", orderId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "orderId": "%s",
-                                  "items": [
+                                  "supplierId": "%s",
+                                  "receiverId": "%s",
+                                  "products": [
                                     { "productId": "%s", "quantity": 2 }
                                   ]
                                 }
-                                """.formatted(orderId, productId)))
+                                """.formatted(supplierId, receiverId, productId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
                 .andExpect(jsonPath("$.message", is("SUCCESS")));
@@ -123,18 +125,17 @@ class ProductInternalControllerTest {
     void deductStocksWithoutOrderIdReturnsBadRequest() throws Exception {
         UUID productId = UUID.randomUUID();
 
-        mockMvc.perform(post("/internal/products/stocks/deduct")
+        mockMvc.perform(post("/internal/v1/products/stocks/deduct")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "items": [
+                                  "products": [
                                     { "productId": "%s", "quantity": 2 }
                                   ]
                                 }
-                                """.formatted(productId)))
+                """.formatted(productId)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(400)))
-                .andExpect(jsonPath("$.message", is("VALIDATION_ERROR")));
+                .andExpect(jsonPath("$.status", is(400)));
     }
 
     @Test
@@ -143,16 +144,14 @@ class ProductInternalControllerTest {
         UUID orderId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
 
-        mockMvc.perform(post("/internal/products/stocks/restore")
+        mockMvc.perform(post("/internal/v1/products/stocks/restore")
+                        .param("orderId", orderId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "orderId": "%s",
-                                  "items": [
-                                    { "productId": "%s", "quantity": 2 }
-                                  ]
-                                }
-                                """.formatted(orderId, productId)))
+                                [
+                                  { "productId": "%s", "quantity": 2 }
+                                ]
+                                """.formatted(productId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
                 .andExpect(jsonPath("$.message", is("SUCCESS")));

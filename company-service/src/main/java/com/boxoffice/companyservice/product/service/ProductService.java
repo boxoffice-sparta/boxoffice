@@ -1,14 +1,15 @@
 package com.boxoffice.companyservice.product.service;
 
+import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.exception.CompanyErrorCode;
 import com.boxoffice.companyservice.company.repository.CompanyRepository;
+import com.boxoffice.companyservice.company.service.CompanyService;
 import com.boxoffice.companyservice.product.domain.PriceVO;
 import com.boxoffice.companyservice.product.dto.request.ProductCreateRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductStockDeductRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductStockItemRequestDto;
-import com.boxoffice.companyservice.product.dto.request.ProductStockRequestDto;
-import com.boxoffice.companyservice.product.dto.request.ProductStockRestoreRequestDto;
 import com.boxoffice.companyservice.product.dto.request.ProductUpdateRequestDto;
 import com.boxoffice.companyservice.product.dto.response.ProductCreateResponseDto;
 import com.boxoffice.companyservice.product.dto.response.HubStockCountResponseDto;
@@ -20,13 +21,11 @@ import com.boxoffice.companyservice.product.entity.Product;
 import com.boxoffice.companyservice.product.entity.ProductStockOperationType;
 import com.boxoffice.companyservice.product.exception.ProductErrorCode;
 import com.boxoffice.companyservice.product.repository.ProductRepository;
-import com.boxoffice.common.exception.BaseException;
-import com.boxoffice.common.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,11 +45,12 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private static final String STOCK_OPERATION_KEY_PREFIX = "company-service:product-stock";
-    private static final Duration STOCK_OPERATION_LOCK_TTL = Duration.ofMinutes(5);
+    private static final Duration STOCK_OPERATION_LOCK_TTL = Duration.ofMinutes(1);
     private static final Duration STOCK_OPERATION_DONE_TTL = Duration.ofDays(7);
 
     private final CompanyRepository companyRepository;
     private final ProductRepository productRepository;
+    private final CompanyService companyService;
     private final StringRedisTemplate redisTemplate;
 
     @Transactional
@@ -108,8 +108,8 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductStockCheckResponseDto checkStocks(ProductStockRequestDto request) {
-        Map<UUID, Integer> quantityByProductId = toQuantityMap(request.getItems());
+    public ProductStockCheckResponseDto checkStocks(List<ProductStockItemRequestDto> request) {
+        Map<UUID, Integer> quantityByProductId = toQuantityMap(request);
         List<UUID> productIds = toSortedProductIds(quantityByProductId);
         // check는 재고 예약이 아니므로 최종 주문 성공 여부는 deduct 결과로 판단해야 한다.
         List<Product> products = productRepository.findAllById(productIds);
@@ -119,42 +119,46 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductStockDeductResponseDto deductStocks(ProductStockDeductRequestDto request) {
-        Map<UUID, Integer> quantityByProductId = toQuantityMap(request.getItems());
+    public ProductStockDeductResponseDto deductStocks(UUID orderId, ProductStockDeductRequestDto request) {
+        Map<UUID, Integer> quantityByProductId = toQuantityMap(request.getProducts());
         List<UUID> productIds = toSortedProductIds(quantityByProductId);
 
-        if (isStockOperationDone(request.getOrderId(), ProductStockOperationType.DEDUCT)) {
-            return getDeductResponseWithoutStockChange(productIds, quantityByProductId);
+        Company supplier = companyService.getCompanyEntity(request.getSupplierId());
+        Company receiver = companyService.getCompanyEntity(request.getReceiverId());
+
+        if (isStockOperationDone(orderId, ProductStockOperationType.DEDUCT)) {
+            return getDeductResponseWithoutStockChange(productIds, quantityByProductId, supplier, receiver);
         }
-        acquireStockOperationLock(request.getOrderId(), ProductStockOperationType.DEDUCT);
+        acquireStockOperationLock(orderId, ProductStockOperationType.DEDUCT);
 
         List<Product> products = productRepository.findAllByIdInForUpdate(productIds);
 
         validateAllProductsFound(products, quantityByProductId);
+        validateProductsBelongToSupplier(products, supplier.getId());
         validateEnoughStock(products, quantityByProductId);
         products.forEach(product -> product.deductStock(quantityByProductId.get(product.getId())));
-        markStockOperationDoneAfterCommit(request.getOrderId(), ProductStockOperationType.DEDUCT);
-        return ProductStockDeductResponseDto.from(products, quantityByProductId);
+        markStockOperationDoneAfterCommit(orderId, ProductStockOperationType.DEDUCT);
+        return ProductStockDeductResponseDto.from(products, quantityByProductId, supplier.getHubId(), receiver.getHubId());
     }
 
     @Transactional
-    public void restoreStocks(ProductStockRestoreRequestDto request) {
-        if (!isStockOperationDone(request.getOrderId(), ProductStockOperationType.DEDUCT)) {
+    public void restoreStocks(UUID orderId, List<ProductStockItemRequestDto> request) {
+        if (!isStockOperationDone(orderId, ProductStockOperationType.DEDUCT)) {
             throw new BaseException(CommonErrorCode.INVALID_INPUT);
         }
 
-        if (isStockOperationDone(request.getOrderId(), ProductStockOperationType.RESTORE)) {
+        if (isStockOperationDone(orderId, ProductStockOperationType.RESTORE)) {
             return;
         }
-        acquireStockOperationLock(request.getOrderId(), ProductStockOperationType.RESTORE);
+        acquireStockOperationLock(orderId, ProductStockOperationType.RESTORE);
 
-        Map<UUID, Integer> quantityByProductId = toQuantityMap(request.getItems());
+        Map<UUID, Integer> quantityByProductId = toQuantityMap(request);
         List<UUID> productIds = toSortedProductIds(quantityByProductId);
         List<Product> products = productRepository.findAllByIdInForUpdate(productIds);
 
         validateAllProductsFound(products, quantityByProductId);
         products.forEach(product -> product.restoreStock(quantityByProductId.get(product.getId())));
-        markStockOperationDoneAfterCommit(request.getOrderId(), ProductStockOperationType.RESTORE);
+        markStockOperationDoneAfterCommit(orderId, ProductStockOperationType.RESTORE);
     }
 
     @Transactional(readOnly = true)
@@ -191,6 +195,7 @@ public class ProductService {
             if (item.getProductId() == null || item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new BaseException(ProductErrorCode.INVALID_STOCK_QUANTITY);
             }
+            // 요청 리스트에 같은 상품이 여러 번 쪼개져 있어도 총 차감 수량으로 병합합니다.
             quantityByProductId.merge(item.getProductId(), item.getQuantity(), Integer::sum);
         }
         return quantityByProductId;
@@ -208,11 +213,14 @@ public class ProductService {
 
     private ProductStockDeductResponseDto getDeductResponseWithoutStockChange(
             List<UUID> productIds,
-            Map<UUID, Integer> quantityByProductId
+            Map<UUID, Integer> quantityByProductId,
+            Company supplier,
+            Company receiver
     ) {
         List<Product> products = productRepository.findAllById(productIds);
         validateAllProductsFound(products, quantityByProductId);
-        return ProductStockDeductResponseDto.from(products, quantityByProductId);
+        validateProductsBelongToSupplier(products, supplier.getId());
+        return ProductStockDeductResponseDto.from(products, quantityByProductId, supplier.getHubId(), receiver.getHubId());
     }
 
     private void acquireStockOperationLock(UUID orderId, ProductStockOperationType operationType) {
@@ -242,11 +250,13 @@ public class ProductService {
     }
 
     private void deleteLockAfterCompletion(UUID orderId, ProductStockOperationType operationType) {
+        // 트랜잭션 외부에서 호출된 경우 즉시 락 해제 (방어 코드)
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             redisTemplate.delete(lockKey(orderId, operationType));
             return;
         }
 
+        // 트랜잭션 내부인 경우, Commit/Rollback 완료 후 락 해제 보장
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCompletion(int status) {
@@ -282,5 +292,14 @@ public class ProductService {
                 throw new BaseException(ProductErrorCode.INSUFFICIENT_STOCK);
             }
         });
+    }
+
+    private void validateProductsBelongToSupplier(List<Product> products, UUID supplierId) {
+        boolean hasOtherCompanyProduct = products.stream()
+                .anyMatch(product -> !product.getCompany().getId().equals(supplierId));
+
+        if (hasOtherCompanyProduct) {
+            throw new BaseException(CommonErrorCode.INVALID_INPUT);
+        }
     }
 }

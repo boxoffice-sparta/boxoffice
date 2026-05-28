@@ -8,16 +8,21 @@ import java.util.UUID;
 
 public record ProductStockDeductResponseDto(
         UUID sourceHubId,
+        UUID destinationHubId,
         List<ProductStockResult> details
 ) {
 
-    public static ProductStockDeductResponseDto from(List<Product> products, Map<UUID, Integer> quantityByProductId) {
-        UUID sourceHubId = products.isEmpty() ? null : products.get(0).getCompany().getHubId();
+    public static ProductStockDeductResponseDto from(
+            List<Product> products,
+            Map<UUID, Integer> quantityByProductId,
+            UUID sourceHubId,
+            UUID destinationHubId
+    ) {
         List<ProductStockResult> details = products.stream()
                 .map(product -> ProductStockResult.from(product, quantityByProductId.get(product.getId())))
                 .toList();
 
-        return new ProductStockDeductResponseDto(sourceHubId, details);
+        return new ProductStockDeductResponseDto(sourceHubId, destinationHubId, details);
     }
 
     public record ProductStockResult(

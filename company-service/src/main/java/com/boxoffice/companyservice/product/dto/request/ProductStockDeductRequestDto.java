@@ -13,10 +13,13 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ProductStockDeductRequestDto {
 
-    @NotNull(message = "주문 ID는 필수입니다.")
-    private UUID orderId;
+    @NotNull(message = "공급 업체 ID는 필수입니다.")
+    private UUID supplierId;
+
+    @NotNull(message = "수령 업체 ID는 필수입니다.")
+    private UUID receiverId;
 
     @Valid
     @NotEmpty(message = "상품 목록은 필수입니다.")
-    private List<ProductStockItemRequestDto> items;
+    private List<ProductStockItemRequestDto> products;
 }
