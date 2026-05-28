@@ -7,6 +7,7 @@ import boxoffice.orderservice.domain.entity.Order;
 import boxoffice.orderservice.domain.entity.OrderProduct;
 import boxoffice.orderservice.domain.repository.OrderRepository;
 import boxoffice.orderservice.infra.event.OrderCreatedEvent;
+import com.boxoffice.common.entity.AddressVO;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -61,7 +62,7 @@ public class OrderCommandService {
             result.sourceHubId(),
             result.destinationHubId(),
             result.request(),
-            new OrderCreatedEvent.DeliveryAddress(addr.zipCode(), addr.address(), addr.detailAddress()),
+            new AddressVO(command.deliveryAddress().zipCode(), command.deliveryAddress().address(), command.deliveryAddress().detailAddress()),
             command.recipientName(),
             command.products().stream()
                 .map(p -> new OrderCreatedEvent.ProductItem(p.productId(), p.quantity()))

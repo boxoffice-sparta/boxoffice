@@ -30,15 +30,12 @@ public class OrderEventListener {
   public void orderCreateEvent(OrderCreatedEvent event) {
     DeliveryResponseDto deliveryResponse;
     try {
-      OrderCreatedEvent.DeliveryAddress addr = event.deliveryAddress();
       deliveryResponse = deliveryFeignClient.requestDelivery(
           new DeliveryCreateRequest(
               event.orderId(),
               event.sourceHubId(),
               event.destinationHubId(),
-              new DeliveryCreateRequest.AddressRequest(
-                  addr.zipCode(), addr.address(), addr.detailAddress()
-              ),
+              event.deliveryAddress(),
               event.recipientName(),
               null
           )
@@ -69,6 +66,7 @@ public class OrderEventListener {
     // 재고 복구
     try {
       companyProductFeignClient.restoreStocks(
+          event.orderId(),
               event.products().stream()
                   .map(p -> new StockRestoreRequest(p.productId(), p.quantity()))
                   .toList()
