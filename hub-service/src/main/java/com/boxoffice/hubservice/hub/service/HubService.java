@@ -95,11 +95,18 @@ public class HubService {
             throw new BaseException(HubErrorCode.DUPLICATE_HUB_NAME);
         }
 
-        AddressVO address = new AddressVO(
-                request.zipCode() != null ? request.zipCode() : hub.getAddress().getZipCode(),
-                request.address() != null ? request.address() : hub.getAddress().getAddress(),
-                request.detailAddress() != null ? request.detailAddress() : hub.getAddress().getDetailAddress()
-        );
+        boolean hasAddressChange = request.zipCode() != null
+                || request.address() != null
+                || request.detailAddress() != null;
+
+        AddressVO address = null;
+        if (hasAddressChange) {
+            address = new AddressVO(
+                    request.zipCode() != null ? request.zipCode() : hub.getAddress().getZipCode(),
+                    request.address() != null ? request.address() : hub.getAddress().getAddress(),
+                    request.detailAddress() != null ? request.detailAddress() : hub.getAddress().getDetailAddress()
+            );
+        }
 
         CoordinateVO coordinate = null;
         if (request.latitude() != null && request.longitude() != null) {
