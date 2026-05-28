@@ -2,7 +2,6 @@ package boxoffice.deliveryservice.domain.delivery.entity;
 
 import com.boxoffice.common.entity.AddressVO;
 import com.boxoffice.common.entity.BaseEntity;
-import org.hibernate.annotations.SQLRestriction;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -13,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.UUID;
 
@@ -58,5 +58,4 @@ public class Delivery extends BaseEntity {
         return new Delivery(orderId, originHubId, destinationHubId, deliveryAddress,
                 null, recipientName, recipientSlackId, DeliveryStatus.WAITING);
     }
-
 }
