@@ -444,12 +444,12 @@ class ProductServiceTest {
         when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
+        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(1))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(productId))).thenReturn(List.of(product));
 
         productService.deductStocks(orderId, request);
 
-        verify(valueOperations).setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5));
+        verify(valueOperations).setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(1));
         verify(valueOperations).set(doneKey(orderId, "deduct"), "1", Duration.ofDays(7));
         verify(redisTemplate).delete(lockKey(orderId, "deduct"));
         verify(productRepository).findAllByIdInForUpdate(List.of(productId));
@@ -475,7 +475,7 @@ class ProductServiceTest {
         when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
+        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(1))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(firstProductId, secondProductId)))
                 .thenReturn(List.of(firstProduct, secondProduct));
 
@@ -505,7 +505,7 @@ class ProductServiceTest {
         when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(false);
+        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(1))).thenReturn(false);
 
         Throwable throwable = catchThrowable(() -> productService.deductStocks(orderId, request));
 
@@ -534,7 +534,7 @@ class ProductServiceTest {
         when(companyService.getCompanyEntity(receiverId)).thenReturn(receiver);
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(5))).thenReturn(true);
+        when(valueOperations.setIfAbsent(lockKey(orderId, "deduct"), "1", Duration.ofMinutes(1))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(firstProductId, secondProductId)))
                 .thenReturn(List.of(firstProduct, secondProduct));
 
@@ -595,12 +595,12 @@ class ProductServiceTest {
         when(redisTemplate.hasKey(doneKey(orderId, "deduct"))).thenReturn(true);
         when(redisTemplate.hasKey(doneKey(orderId, "restore"))).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(5))).thenReturn(true);
+        when(valueOperations.setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(1))).thenReturn(true);
         when(productRepository.findAllByIdInForUpdate(List.of(productId))).thenReturn(List.of(product));
 
         productService.restoreStocks(orderId, request);
 
-        verify(valueOperations).setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(5));
+        verify(valueOperations).setIfAbsent(lockKey(orderId, "restore"), "1", Duration.ofMinutes(1));
         verify(valueOperations).set(doneKey(orderId, "restore"), "1", Duration.ofDays(7));
         verify(redisTemplate).delete(lockKey(orderId, "restore"));
         verify(productRepository).findAllByIdInForUpdate(List.of(productId));
