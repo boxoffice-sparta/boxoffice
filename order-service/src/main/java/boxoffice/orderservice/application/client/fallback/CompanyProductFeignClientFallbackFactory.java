@@ -42,7 +42,7 @@ public class CompanyProductFeignClientFallbackFactory implements FallbackFactory
             }
 
             @Override
-            public void restoreStocks(List<StockRestoreRequest> requests) {
+            public void restoreStocks(UUID orderId, List<StockRestoreRequest> requests) {
                 // 보상 트랜잭션 실패 - 로그만 기록
                 log.error("[CompanyProductFeignClient] 재고 복구 실패 - 수동 처리 필요", cause);
             }

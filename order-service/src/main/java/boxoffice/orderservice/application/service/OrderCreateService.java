@@ -109,6 +109,7 @@ public class OrderCreateService {
     private void restoreStockOrLog(UUID orderId, StockDeductRequest stockRequests) {
         try {
             companyProductFeignClient.restoreStocks(
+                orderId,
                 stockRequests.products().stream()
                     .map(p -> new StockRestoreRequest(p.productId(), p.quantity()))
                     .toList()
