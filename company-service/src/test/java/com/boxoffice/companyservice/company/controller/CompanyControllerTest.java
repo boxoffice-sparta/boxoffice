@@ -55,15 +55,12 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - 업체 목록 검색 결과를 반환한다")
     void searchCompaniesReturnsPageResponse() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         CompanyResponseDto responseDto = createCompanyResponse(companyId, hubId);
         Page<CompanyResponseDto> responsePage = new PageImpl<>(List.of(responseDto));
-
         when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .param("name", "테스트")
@@ -99,11 +96,9 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - 업체 검색의 updatedAt 정렬 기준을 Facade로 전달한다")
     void searchCompaniesWithUpdatedAtSortPassesSortToFacade() throws Exception {
-        // given
         Page<CompanyResponseDto> responsePage = Page.empty(PageRequest.of(0, 10));
         when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .param("sort", "updatedAt,asc"))
@@ -122,11 +117,9 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - 업체 검색 조건이 없으면 기본 페이지와 정렬로 조회한다")
     void searchCompaniesWithoutConditionUsesDefaultPageable() throws Exception {
-        // given
         Page<CompanyResponseDto> responsePage = Page.empty(PageRequest.of(0, 10));
         when(companyFacade.searchCompanies(any(), any(), eq("MASTER"))).thenReturn(responsePage);
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies")
                         .header("X-User-Role", "MASTER"))
                 .andExpect(status().isOk())
@@ -154,11 +147,9 @@ class CompanyControllerTest {
     @Test
     @DisplayName("실패 - 업체 검색 type 파라미터가 잘못된 Enum 값이면 400 Bad Request를 반환한다")
     void searchCompaniesWithInvalidTypeReturnsBadRequest() throws Exception {
-        // given
         when(companyFacade.searchCompanies(any(), any(), eq("MASTER")))
                 .thenThrow(new BaseException(CommonErrorCode.INVALID_INPUT));
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .param("type", "INVALID_TYPE"))
@@ -173,14 +164,11 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - 업체 상세 조회 요청 시 업체 상세 정보를 반환한다")
     void getCompanyReturnsCompanyResponse() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         CompanyResponseDto response = createCompanyResponse(companyId, hubId);
-
         when(companyFacade.getCompany(companyId, "MASTER")).thenReturn(response);
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies/{companyId}", companyId)
                         .header("X-User-Role", "MASTER"))
                 .andExpect(status().isOk())
@@ -199,12 +187,10 @@ class CompanyControllerTest {
     @Test
     @DisplayName("실패 - 업체 상세 조회 시 X-User-Role 헤더가 없으면 401 인증 실패를 반환한다")
     void getCompanyWithoutUserRoleHeaderReturnsUnauthorized() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         when(companyFacade.getCompany(companyId, null))
                 .thenThrow(new BaseException(CommonErrorCode.UNAUTHORIZED));
 
-        // when & then
         mockMvc.perform(get("/api/v1/companies/{companyId}", companyId))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
@@ -217,20 +203,15 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - POST /api/v1/companies 요청 시 201 Created와 companyId를 반환한다")
     void createCompanyReturnsCreatedAndCompanyId() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         CompanyCreateResponseDto response = createResponse(companyId, hubId);
-
         when(companyFacade.createCompany(any(), eq("MASTER"), isNull())).thenReturn(response);
 
-        String requestBody = createRequestBody(hubId);
-
-        // when & then
         mockMvc.perform(post("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(createRequestBody(hubId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status", is(201)))
                 .andExpect(jsonPath("$.message", is("SUCCESS")))
@@ -243,21 +224,16 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - X-User-Hub-Id 헤더를 Facade로 전달한다")
     void createCompanyPassesUserHubIdHeader() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         CompanyCreateResponseDto response = createResponse(companyId, hubId);
-
         when(companyFacade.createCompany(any(), eq("HUB_MANAGER"), eq(hubId))).thenReturn(response);
 
-        String requestBody = createRequestBody(hubId);
-
-        // when & then
         mockMvc.perform(post("/api/v1/companies")
                         .header("X-User-Role", "HUB_MANAGER")
                         .header("X-User-Hub-Id", hubId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(createRequestBody(hubId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status", is(201)))
                 .andExpect(jsonPath("$.data.companyId", is(companyId.toString())));
@@ -269,17 +245,13 @@ class CompanyControllerTest {
     @Test
     @DisplayName("실패 - X-User-Role 헤더가 없으면 401 인증 실패를 반환한다")
     void createCompanyWithoutUserRoleHeaderReturnsUnauthorized() throws Exception {
-        // given
         UUID hubId = UUID.randomUUID();
         when(companyFacade.createCompany(any(), isNull(), isNull()))
                 .thenThrow(new BaseException(CommonErrorCode.UNAUTHORIZED));
 
-        String requestBody = createRequestBody(hubId);
-
-        // when & then
         mockMvc.perform(post("/api/v1/companies")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(createRequestBody(hubId)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status", is(401)))
                 .andExpect(jsonPath("$.message", is(CommonErrorCode.UNAUTHORIZED.getMessage())));
@@ -291,7 +263,6 @@ class CompanyControllerTest {
     @Test
     @DisplayName("실패 - 필수 요청값이 누락되면 400 검증 실패를 반환한다")
     void createCompanyWithoutNameReturnsValidationError() throws Exception {
-        // given
         UUID hubId = UUID.randomUUID();
         String requestBody = """
                 {
@@ -306,7 +277,6 @@ class CompanyControllerTest {
                 }
                 """.formatted(hubId, UUID.randomUUID());
 
-        // when & then
         mockMvc.perform(post("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -322,11 +292,9 @@ class CompanyControllerTest {
     @Test
     @DisplayName("성공 - managerUserId가 없어도 업체 생성 요청은 Facade로 전달한다")
     void createCompanyWithoutManagerUserIdPassesRequestToFacade() throws Exception {
-        // given
         UUID companyId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         CompanyCreateResponseDto response = createResponse(companyId, hubId);
-
         when(companyFacade.createCompany(any(), eq("MASTER"), isNull())).thenReturn(response);
 
         String requestBody = """
@@ -342,7 +310,6 @@ class CompanyControllerTest {
                 }
                 """.formatted(hubId);
 
-        // when & then
         mockMvc.perform(post("/api/v1/companies")
                         .header("X-User-Role", "MASTER")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -356,13 +323,11 @@ class CompanyControllerTest {
     }
 
     private CompanyCreateResponseDto createResponse(UUID companyId, UUID hubId) {
-        Company company = createCompany(companyId, hubId);
-        return CompanyCreateResponseDto.from(company);
+        return CompanyCreateResponseDto.from(createCompany(companyId, hubId));
     }
 
     private CompanyResponseDto createCompanyResponse(UUID companyId, UUID hubId) {
-        Company company = createCompany(companyId, hubId);
-        return CompanyResponseDto.from(company);
+        return CompanyResponseDto.from(createCompany(companyId, hubId));
     }
 
     private Company createCompany(UUID companyId, UUID hubId) {
