@@ -6,31 +6,29 @@ import boxoffice.orderservice.application.client.dto.request.StockRestoreRequest
 import boxoffice.orderservice.application.client.dto.response.InternalCompanyHub;
 import boxoffice.orderservice.application.client.dto.response.StockCheckResponse;
 import boxoffice.orderservice.application.client.dto.response.StockDeductResponse;
+import boxoffice.orderservice.application.client.fallback.CompanyProductFeignClientFallbackFactory;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "company-product-service")
+@FeignClient(name = "company-service", contextId = "companyProductFeignClient", fallbackFactory = CompanyProductFeignClientFallbackFactory.class)
 public interface CompanyProductFeignClient {
 
-  // TODO: 수정 예정
-  @GetMapping("/internal/products/hubStatus")
-  InternalCompanyHub getCompanyById(@RequestParam UUID supplierId,@RequestParam UUID receiverId);
+  @GetMapping("/internal/v1/companies/hubs/{supplierId}/{receiverId}")
+  InternalCompanyHub getCompanyById(@PathVariable UUID supplierId, @PathVariable UUID receiverId);
 
-  // 주문 전 상품 존재 여부, 삭제 여부, 재고 상태 검증
-  @PostMapping("/internal/products/check")
+  @PostMapping("/internal/v1/products/stocks/check")
   StockCheckResponse checkStocks(@RequestBody List<StockCheckRequest> requests);
 
-  // 재고 차감 요청
-  @PostMapping("/internal/products/deduct")
-  StockDeductResponse deductStocks(@RequestBody List<StockDeductRequest> requests);
+  // orderId를 선제적으로 전달하여 재고 차감 이력 추적 가능
+  @PostMapping("/internal/v1/products/stocks/deduct")
+  StockDeductResponse deductStocks(@RequestParam UUID orderId, @RequestBody StockDeductRequest requests);
 
-    // 복수 상품 재고 일괄 복원 : 보상 트랜잭션
-  @PostMapping("/internal/products/restore")
-  void restoreStocks(@RequestBody List<StockRestoreRequest> requests);
-
+  @PostMapping("/internal/v1/products/stocks/restore")
+  void restoreStocks(@RequestParam UUID orderId, @RequestBody List<StockRestoreRequest> requests);
 }
