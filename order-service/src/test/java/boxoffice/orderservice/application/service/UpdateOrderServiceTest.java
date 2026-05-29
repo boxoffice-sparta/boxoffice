@@ -17,6 +17,7 @@ import boxoffice.orderservice.infra.exception.OrderErrorCode;
 import boxoffice.orderservice.presentation.dto.request.UpdateOrderRequest;
 import boxoffice.orderservice.presentation.dto.response.CreateOrderResponseDto;
 import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.response.ApiResponse;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,9 +80,9 @@ class UpdateOrderServiceTest {
             UserDetailInfo masterUser = mock(UserDetailInfo.class);
             given(masterUser.role()).willReturn("MASTER");
             given(masterUser.isHubManager()).willReturn(false);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(masterUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(masterUser));
             given(orderQueryService.findById(orderId)).willReturn(mockOrder);
-            given(orderCommandService.updateOrder(mockOrder, updatedRequest)).willReturn(mockOrder);
+            given(orderCommandService.updateOrder(orderId, updatedRequest)).willReturn(mockOrder);
 
             // when
             CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, updateRequest, keycloakId);
@@ -89,7 +90,7 @@ class UpdateOrderServiceTest {
             // then
             assertThat(response).isNotNull();
             assertThat(response.orderId()).isEqualTo(orderId);
-            verify(orderCommandService).updateOrder(mockOrder, updatedRequest);
+            verify(orderCommandService).updateOrder(orderId, updatedRequest);
         }
 
         @Test
@@ -100,19 +101,19 @@ class UpdateOrderServiceTest {
             given(hubManagerUser.role()).willReturn("HUB_MANAGER");
             given(hubManagerUser.isHubManager()).willReturn(true);
             given(hubManagerUser.hubId()).willReturn(hubId);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(hubManagerUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(hubManagerUser));
 
             // sourceHubId 일치 시 단락 평가로 destinationHubId는 호출되지 않음
             given(mockOrder.getSourceHubId()).willReturn(hubId);
             given(orderQueryService.findById(orderId)).willReturn(mockOrder);
-            given(orderCommandService.updateOrder(mockOrder, updatedRequest)).willReturn(mockOrder);
+            given(orderCommandService.updateOrder(orderId, updatedRequest)).willReturn(mockOrder);
 
             // when
             CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, updateRequest, keycloakId);
 
             // then
             assertThat(response).isNotNull();
-            verify(orderCommandService).updateOrder(mockOrder, updatedRequest);
+            verify(orderCommandService).updateOrder(orderId, updatedRequest);
         }
 
         @Test
@@ -123,19 +124,19 @@ class UpdateOrderServiceTest {
             given(hubManagerUser.role()).willReturn("HUB_MANAGER");
             given(hubManagerUser.isHubManager()).willReturn(true);
             given(hubManagerUser.hubId()).willReturn(hubId);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(hubManagerUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(hubManagerUser));
 
             given(mockOrder.getSourceHubId()).willReturn(UUID.randomUUID());
             given(mockOrder.getDestinationHubId()).willReturn(hubId);
             given(orderQueryService.findById(orderId)).willReturn(mockOrder);
-            given(orderCommandService.updateOrder(mockOrder, updatedRequest)).willReturn(mockOrder);
+            given(orderCommandService.updateOrder(orderId, updatedRequest)).willReturn(mockOrder);
 
             // when
             CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, updateRequest, keycloakId);
 
             // then
             assertThat(response).isNotNull();
-            verify(orderCommandService).updateOrder(mockOrder, updatedRequest);
+            verify(orderCommandService).updateOrder(orderId, updatedRequest);
         }
 
         @Test
@@ -144,7 +145,7 @@ class UpdateOrderServiceTest {
             // given
             UserDetailInfo supplierUser = mock(UserDetailInfo.class);
             given(supplierUser.role()).willReturn("SUPPLIER_MANAGER");
-            given(userFeignClient.getUserById(keycloakId)).willReturn(supplierUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(supplierUser));
 
             // when & then
             assertThatThrownBy(() -> updateOrderService.updateOrder(orderId, updateRequest, keycloakId))
@@ -161,7 +162,7 @@ class UpdateOrderServiceTest {
             // given
             UserDetailInfo deliveryUser = mock(UserDetailInfo.class);
             given(deliveryUser.role()).willReturn("DELIVERY_MANAGER");
-            given(userFeignClient.getUserById(keycloakId)).willReturn(deliveryUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(deliveryUser));
 
             // when & then
             assertThatThrownBy(() -> updateOrderService.updateOrder(orderId, updateRequest, keycloakId))
@@ -177,7 +178,7 @@ class UpdateOrderServiceTest {
             // given
             UserDetailInfo unknownUser = mock(UserDetailInfo.class);
             given(unknownUser.role()).willReturn("UNKNOWN_ROLE");
-            given(userFeignClient.getUserById(keycloakId)).willReturn(unknownUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(unknownUser));
 
             // when & then
             assertThatThrownBy(() -> updateOrderService.updateOrder(orderId, updateRequest, keycloakId))
@@ -193,7 +194,7 @@ class UpdateOrderServiceTest {
             given(hubManagerUser.role()).willReturn("HUB_MANAGER");
             given(hubManagerUser.isHubManager()).willReturn(true);
             given(hubManagerUser.hubId()).willReturn(hubId);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(hubManagerUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(hubManagerUser));
 
             given(mockOrder.getSourceHubId()).willReturn(UUID.randomUUID());
             given(mockOrder.getDestinationHubId()).willReturn(UUID.randomUUID());
@@ -214,7 +215,7 @@ class UpdateOrderServiceTest {
             UserDetailInfo masterUser = mock(UserDetailInfo.class);
             given(masterUser.role()).willReturn("MASTER");
             given(masterUser.isHubManager()).willReturn(false);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(masterUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(masterUser));
 
             given(mockOrder.getStatus()).willReturn(OrderStatus.DELIVERED);
             given(orderQueryService.findById(orderId)).willReturn(mockOrder);
@@ -233,8 +234,7 @@ class UpdateOrderServiceTest {
             // given
             UserDetailInfo masterUser = mock(UserDetailInfo.class);
             given(masterUser.role()).willReturn("MASTER");
-            // isHubManager()는 findById가 예외를 던지기 전에 호출되지 않으므로 stubbing 불필요
-            given(userFeignClient.getUserById(keycloakId)).willReturn(masterUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(masterUser));
 
             given(orderQueryService.findById(orderId))
                 .willThrow(new BaseException(OrderErrorCode.ORDER_NOT_FOUND));
@@ -252,9 +252,9 @@ class UpdateOrderServiceTest {
             UserDetailInfo masterUser = mock(UserDetailInfo.class);
             given(masterUser.role()).willReturn("MASTER");
             given(masterUser.isHubManager()).willReturn(false);
-            given(userFeignClient.getUserById(keycloakId)).willReturn(masterUser);
+            given(userFeignClient.getUserById(keycloakId)).willReturn(ApiResponse.success(masterUser));
             given(orderQueryService.findById(orderId)).willReturn(mockOrder);
-            given(orderCommandService.updateOrder(mockOrder, null)).willReturn(mockOrder);
+            given(orderCommandService.updateOrder(orderId, null)).willReturn(mockOrder);
 
             UpdateOrderRequest nullRequest = new UpdateOrderRequest(null);
 
@@ -263,7 +263,7 @@ class UpdateOrderServiceTest {
 
             // then
             assertThat(response).isNotNull();
-            verify(orderCommandService).updateOrder(mockOrder, null);
+            verify(orderCommandService).updateOrder(orderId, null);
         }
     }
 }
