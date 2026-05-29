@@ -208,7 +208,6 @@ class OrderCreateServiceTest {
             verify(orderCommandService, never()).saveOrder(any(), any(), any(), any(), any(), any(), any(), any());
         }
 
-        /*
         @Test
         @DisplayName("[예외] 주문 저장 실패 시 재고 보상 트랜잭션 수행 후 ORDER_SAVE_FAILED 발생")
         void exception_order_save_failed_triggers_compensation() {
@@ -229,8 +228,6 @@ class OrderCreateServiceTest {
             verify(companyProductFeignClient).restoreStocks(any(UUID.class), anyList());
         }
 
-         */
-/*
         @Test
         @DisplayName("[예외] 보상 트랜잭션(재고 복구)도 실패해도 ORDER_SAVE_FAILED 예외는 정상 전파된다.")
         void exception_compensation_also_fails_still_propagates_original_error() {
@@ -248,8 +245,6 @@ class OrderCreateServiceTest {
                 .isInstanceOf(BaseException.class)
                 .hasFieldOrPropertyWithValue("errorCode", OrderErrorCode.ORDER_SAVE_FAILED);
         }
-
- */
     }
 
 
