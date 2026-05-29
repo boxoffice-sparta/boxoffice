@@ -4,6 +4,7 @@ import boxoffice.orderservice.application.client.CompanyProductFeignClient;
 import boxoffice.orderservice.application.client.DeliveryFeignClient;
 import boxoffice.orderservice.application.client.dto.request.DeliveryCreateRequest;
 import boxoffice.orderservice.application.client.dto.request.StockRestoreRequest;
+import boxoffice.orderservice.application.client.dto.response.DeliveryResponseDto;
 import boxoffice.orderservice.domain.entity.Order;
 import boxoffice.orderservice.domain.repository.OrderRepository;
 import boxoffice.orderservice.infra.exception.OrderErrorCode;
@@ -24,23 +25,31 @@ public class OrderEventListener {
   private final CompanyProductFeignClient companyProductFeignClient;
   private final OrderRepository orderRepository;
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void orderCreateEvent(OrderCreatedEvent event) {
+    DeliveryResponseDto deliveryResponse;
     try {
-      deliveryFeignClient.requestDelivery(
+      deliveryResponse = deliveryFeignClient.requestDelivery(
           new DeliveryCreateRequest(
               event.orderId(),
-              event.supplierId(),
-              event.receiverId(),
-              event.request()
+              event.sourceHubId(),
+              event.destinationHubId(),
+              event.deliveryAddress(),
+              event.recipientName(),
+              null
           )
-      );
+      ).getData();
     } catch (Exception e) {
-      log.error("[EVENT FAILED] 배송 요청이 실패했습니다. orderId = {}", event.orderId());
+      log.error("[EVENT FAILED] 배송 요청이 실패했습니다. orderId = {}", event.orderId(), e);
       cancelOrderAndRestoreStock(event);
       throw new BaseException(OrderErrorCode.DELIVERY_REQUEST_FAILED);
     }
+
+    Order order = orderRepository.findById(event.orderId())
+        .orElseThrow(() -> new BaseException(OrderErrorCode.ORDER_NOT_FOUND));
+    order.linkDelivery(deliveryResponse.id());
+    orderRepository.save(order);
   }
 
   private void cancelOrderAndRestoreStock(OrderCreatedEvent event) {
@@ -57,6 +66,7 @@ public class OrderEventListener {
     // 재고 복구
     try {
       companyProductFeignClient.restoreStocks(
+          event.orderId(),
               event.products().stream()
                   .map(p -> new StockRestoreRequest(p.productId(), p.quantity()))
                   .toList()
