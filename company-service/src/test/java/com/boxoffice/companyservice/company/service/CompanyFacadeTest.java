@@ -4,6 +4,7 @@ import com.boxoffice.common.exception.BaseException;
 import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.companyservice.company.dto.request.CompanyCreateRequestDto;
 import com.boxoffice.companyservice.company.dto.response.CompanyCreateResponseDto;
+import com.boxoffice.companyservice.company.dto.response.CompanyResponseDto;
 import com.boxoffice.companyservice.company.exception.CompanyErrorCode;
 import com.boxoffice.companyservice.company.validator.HubValidator;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +19,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
+
+import com.boxoffice.companyservice.company.dto.search.CompanySearchCondition;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -58,7 +64,6 @@ class CompanyFacadeTest {
     void createCompanyWithoutRequestHubId() {
         // given
         CompanyCreateRequestDto request = new CompanyCreateRequestDto();
-
         // when
         Throwable throwable = catchThrowable(() -> companyFacade.createCompany(request, "MASTER", null));
 
@@ -68,7 +73,7 @@ class CompanyFacadeTest {
     }
 
     @Test
-    @DisplayName("성공 - MASTER는 담당 허브 헤더 없이 업체를 생성한다")
+    @DisplayName("성공 - MASTER는 해당 허브 헤더 없이 업체를 생성한다")
     void createCompanyWithMasterRole() {
         // given
         CompanyCreateRequestDto request = createRequest(UUID.randomUUID());
@@ -83,7 +88,7 @@ class CompanyFacadeTest {
         verifyCreateOrder(request);
     }
 
-    @DisplayName("성공 - HUB_MANAGER는 담당 허브가 일치하면 업체를 생성한다")
+    @DisplayName("성공 - HUB_MANAGER는 해당 허브가 일치하면 업체를 생성한다")
     @ParameterizedTest(name = "role={0}")
     @ValueSource(strings = {"HUB_MANAGER", " hub_manager "})
     void createCompanyWithHubManagerRoleAndSameHub(String userRole) {
@@ -103,7 +108,7 @@ class CompanyFacadeTest {
     }
 
     @Test
-    @DisplayName("실패 - HUB_MANAGER의 담당 허브 헤더가 없으면 업체를 생성할 수 없다")
+    @DisplayName("실패 - HUB_MANAGER는 해당 허브 헤더가 없으면 업체를 생성할 수 없다")
     void createCompanyWithHubManagerRoleAndMissingUserHubId() {
         // given
         CompanyCreateRequestDto request = createRequest(UUID.randomUUID());
@@ -117,7 +122,7 @@ class CompanyFacadeTest {
     }
 
     @Test
-    @DisplayName("실패 - HUB_MANAGER의 담당 허브와 요청 허브가 다르면 업체를 생성할 수 없다")
+    @DisplayName("실패 - HUB_MANAGER는 해당 허브와 요청 허브가 다르면 업체를 생성할 수 없다")
     void createCompanyWithHubManagerRoleAndDifferentHub() {
         // given
         CompanyCreateRequestDto request = createRequest(UUID.randomUUID());
@@ -199,6 +204,138 @@ class CompanyFacadeTest {
         verifyNoInteractions(hubValidator, companyService);
     }
 
+    @ParameterizedTest(name = "성공 - role={0}은 업체 상세 조회가 가능하다")
+    @ValueSource(strings = {"MASTER", "HUB_MANAGER", " hub_manager ", "DELIVERY_MANAGER", "SUPPLIER_MANAGER"})
+    void getCompanyWithReadableRole(String userRole) {
+        // given
+        UUID companyId = UUID.randomUUID();
+        CompanyResponseDto expectedResponse = mock(CompanyResponseDto.class);
+        when(companyService.getCompany(companyId)).thenReturn(expectedResponse);
+
+        // when
+        CompanyResponseDto response = companyFacade.getCompany(companyId, userRole);
+
+        // then
+        assertThat(response).isSameAs(expectedResponse);
+        verify(companyService).getCompany(companyId);
+        verifyNoMoreInteractions(companyService);
+        verifyNoInteractions(hubValidator);
+    }
+
+    @Test
+    @DisplayName("실패 - role 헤더가 없으면 업체 상세 조회를 할 수 없다")
+    void getCompanyWithoutRole() {
+        // given
+        UUID companyId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.getCompany(companyId, null));
+
+        // then
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @Test
+    @DisplayName("실패 - role 헤더가 공백이면 업체 상세 조회를 할 수 없다")
+    void getCompanyWithBlankRole() {
+        // given
+        UUID companyId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.getCompany(companyId, "   "));
+
+        // then
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @ParameterizedTest(name = "실패 - role={0}은 업체 상세 조회가 불가능하다")
+    @ValueSource(strings = {"UNKNOWN_ROLE"})
+    void getCompanyWithInvalidRole(String userRole) {
+        // given
+        UUID companyId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.getCompany(companyId, userRole));
+
+        // then
+        assertForbidden(throwable);
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @ParameterizedTest(name = "성공 - role={0}은 업체 검색이 가능하다")
+    @ValueSource(strings = {"MASTER", "HUB_MANAGER", " hub_manager ", "DELIVERY_MANAGER", "SUPPLIER_MANAGER"})
+    void searchCompaniesWithReadableRole(String userRole) {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition();
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<CompanyResponseDto> expectedResponse = Page.empty(pageable);
+        
+        when(companyService.searchCompanies(condition, null, pageable)).thenReturn(expectedResponse);
+
+        // when
+        Page<CompanyResponseDto> response = companyFacade.searchCompanies(condition, pageable, userRole);
+
+        // then
+        assertThat(response).isSameAs(expectedResponse);
+        verify(companyService).searchCompanies(condition, null, pageable);
+        verifyNoMoreInteractions(companyService);
+        verifyNoInteractions(hubValidator);
+    }
+
+    @Test
+    @DisplayName("실패 - role 헤더가 없으면 업체 검색을 할 수 없다")
+    void searchCompaniesWithoutRole() {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.searchCompanies(condition, pageable, null));
+
+        // then
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @ParameterizedTest(name = "실패 - role={0}은 업체 검색이 불가능하다")
+    @ValueSource(strings = {"UNKNOWN_ROLE"})
+    void searchCompaniesWithInvalidRole(String userRole) {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.searchCompanies(condition, pageable, userRole));
+
+        // then
+        assertForbidden(throwable);
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
+    @Test
+    @DisplayName("실패 - 검색 type이 업체 타입 enum 값과 맞지 않으면 입력값 오류로 처리한다")
+    void searchCompaniesWithInvalidType() {
+        // given
+        CompanySearchCondition condition = new CompanySearchCondition();
+        condition.setType("INVALID_TYPE");
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Throwable throwable = catchThrowable(() -> companyFacade.searchCompanies(condition, pageable, "MASTER"));
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(hubValidator, companyService);
+    }
+
     private void verifyCreateOrder(CompanyCreateRequestDto request) {
         // Facade는 권한과 담당 허브를 먼저 확인한 뒤 Hub 검증, 저장 순서로 진행해야 한다.
         InOrder inOrder = inOrder(hubValidator, companyService);
@@ -221,8 +358,8 @@ class CompanyFacadeTest {
 
     private CompanyCreateRequestDto createRequest(UUID hubId) {
         CompanyCreateRequestDto request = new CompanyCreateRequestDto();
-        // Request DTO는 setter가 없으므로 Facade 단위 테스트에 필요한 hubId만 주입한다.
         ReflectionTestUtils.setField(request, "hubId", hubId);
+        ReflectionTestUtils.setField(request, "managerUserId", UUID.randomUUID());
         return request;
     }
 }
