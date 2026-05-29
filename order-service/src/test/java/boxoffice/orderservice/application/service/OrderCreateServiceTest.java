@@ -232,7 +232,7 @@ class OrderCreateServiceTest {
             given(userFeignClient.getUserById(requesterId)).willReturn(ApiResponse.success(user));
             given(companyProductFeignClient.deductStocks(any(UUID.class), any(StockDeductRequest.class)))
                 .willReturn(ApiResponse.success(stockDeductResponse));
-            given(orderCommandService.saveOrder(any(), any(), any(), any(), any(), any(), any(), any()))
+            given(orderCommandService.saveOrder(any(UUID.class), any(UUID.class), any(UUID.class), any(UUID.class), any(UUID.class), any(String.class), any(StockDeductResponse.class), any(CreateOrderCommand.class)))
                 .willThrow(new RuntimeException("DB Timeout"));
 
             // when & then
