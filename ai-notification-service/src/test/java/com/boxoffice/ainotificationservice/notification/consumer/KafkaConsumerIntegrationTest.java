@@ -1,0 +1,106 @@
+package com.boxoffice.ainotificationservice.notification.consumer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+import com.boxoffice.ainotificationservice.notification.repository.ProcessedEventRepository;
+import com.boxoffice.ainotificationservice.notification.repository.SlackMessageRepository;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:notif;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;"
+                + "INIT=CREATE SCHEMA IF NOT EXISTS notification_schema",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.autoconfigure.exclude="
+                + "org.springframework.ai.model.google.genai.autoconfigure.chat.GoogleGenAiChatAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
+                + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
+        "notification.slack.channel-id=C-IT",
+        "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
+        "spring.kafka.consumer.auto-offset-reset=earliest"
+})
+@EmbeddedKafka(partitions = 1, topics = {"user.events", "order.events", "notification.dlq"})
+@DisplayName("Kafka 컨슈머 통합")
+class KafkaConsumerIntegrationTest {
+
+    private static final String GROUP = "ai-notification-service";
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    @Autowired
+    private SlackMessageRepository slackMessageRepository;
+
+    @Autowired
+    private ProcessedEventRepository processedEventRepository;
+
+    @Autowired
+    private EmbeddedKafkaBroker broker;
+
+    @Test
+    @DisplayName("user.events / UserApproved 수신 → SlackMessage 저장 + 처리 기록")
+    void consume_user_approved() {
+        kafkaTemplate.send("user.events",
+                "{\"eventType\":\"UserApproved\",\"eventId\":\"it-1\",\"userName\":\"홍길동\"}");
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(slackMessageRepository.findByIdempotencyKey("it-1")).isPresent();
+            assertThat(processedEventRepository.existsByEventIdAndConsumerGroup("it-1", GROUP)).isTrue();
+        });
+    }
+
+    @Test
+    @DisplayName("동일 eventId 중복 발행 → SlackMessage 1건만 (멱등)")
+    void idempotent_duplicate() {
+        String message =
+                "{\"eventType\":\"OrderCanceled\",\"eventId\":\"it-dup\",\"orderId\":\"O-1\",\"reason\":\"재고\"}";
+        kafkaTemplate.send("order.events", message);
+        kafkaTemplate.send("order.events", message);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                assertThat(processedEventRepository.existsByEventIdAndConsumerGroup("it-dup", GROUP)).isTrue());
+
+        assertThat(slackMessageRepository.findByIdempotencyKey("it-dup")).isPresent();
+        assertThat(slackMessageRepository.findAll().stream()
+                .filter(m -> "it-dup".equals(m.getIdempotencyKey()))
+                .count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("파싱 불가 메시지 → 재시도 후 notification.dlq 이관")
+    void invalid_payload_to_dlq() {
+        try (Consumer<String, String> dlqConsumer = createConsumer()) {
+            kafkaTemplate.send("user.events", "not-json");
+
+            ConsumerRecord<String, String> dlqRecord =
+                    KafkaTestUtils.getSingleRecord(dlqConsumer, "notification.dlq", Duration.ofSeconds(15));
+
+            assertThat(dlqRecord.value()).isEqualTo("not-json");
+        }
+    }
+
+    private Consumer<String, String> createConsumer() {
+        Map<String, Object> props = KafkaTestUtils.consumerProps("dlq-test-group", "true", broker);
+        Consumer<String, String> consumer = new DefaultKafkaConsumerFactory<>(
+                props, new StringDeserializer(), new StringDeserializer()).createConsumer();
+        consumer.subscribe(List.of("notification.dlq"));
+        return consumer;
+    }
+}

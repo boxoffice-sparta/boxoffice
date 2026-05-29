@@ -19,6 +19,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 // 기본 test는 외부 호출 격리를 위해 e2e 태그 제외
