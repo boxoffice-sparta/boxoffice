@@ -490,6 +490,21 @@ class HubRouteServiceTest {
     }
 
     @Test
+    @DisplayName("수정할 필드가 없으면 예외 발생")
+    void updateHubRoute_noFieldsToUpdate_throwsException() {
+        // given
+        UUID routeId = UUID.randomUUID();
+        HubRouteUpdateRequestDto request = new HubRouteUpdateRequestDto(null, null);
+
+        // when & then
+        assertThatThrownBy(() -> hubRouteService.updateHubRoute(routeId, request))
+                .isInstanceOf(BaseException.class)
+                .satisfies(e -> assertThat(((BaseException) e).getErrorCode())
+                        .isEqualTo(HubErrorCode.NO_FIELDS_TO_UPDATE));
+        verify(hubRouteRepository, never()).findById(any());
+    }
+
+    @Test
     @DisplayName("존재하지 않는 경로 수정 시 예외 발생")
     void updateHubRoute_routeNotFound_throwsException() {
         // given
