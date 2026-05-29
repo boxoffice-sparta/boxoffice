@@ -1,15 +1,22 @@
 package boxoffice.deliveryservice.domain.delivery.service;
 
 import boxoffice.deliveryservice.client.HubClient;
+import boxoffice.deliveryservice.client.UserServiceClient;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto;
+import boxoffice.deliveryservice.client.dto.response.UserResponseDto;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.delivery.exception.DeliveryErrorCode;
 import boxoffice.deliveryservice.domain.delivery.repository.DeliveryRepository;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.service.DeliveryRouteService;
 import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.exception.CommonErrorCode;
+import com.boxoffice.common.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +30,12 @@ public class DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryRouteService deliveryRouteService;
     private final HubClient hubClient;
+    private final UserServiceClient userServiceClient;
 
     public DeliveryResponseDto createDelivery(DeliveryCreateRequestDto request) {
         Delivery delivery = Delivery.create(
                 request.orderId(),
+                request.companyId(),
                 request.originHubId(),
                 request.destinationHubId(),
                 request.deliveryAddress(),
@@ -53,5 +62,78 @@ public class DeliveryService {
         }
         delivery.cancel();
         delivery.softDelete(null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<DeliveryResponseDto> getDeliveries(String keycloakSub, Pageable pageable) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+
+        Page<Delivery> deliveries = switch (userInfo.getRole()) {
+            case MASTER -> deliveryRepository.findAllByDeletedAtIsNull(pageable);
+            case HUB_MANAGER -> deliveryRepository.findAllByHubIdAndDeletedAtIsNull(userInfo.getHubId(), pageable);
+            case DELIVERY_MANAGER ->
+                deliveryRepository.findAllByDeliveryPersonIdAndDeletedAtIsNull(userInfo.getId(), pageable);
+            case SUPPLIER_MANAGER ->
+                deliveryRepository.findAllByCompanyIdAndDeletedAtIsNull(userInfo.getCompanyId(), pageable);
+        };
+
+        return PageResponse.of(deliveries.map(DeliveryResponseDto::from));
+    }
+
+    @Transactional(readOnly = true)
+    public DeliveryResponseDto getDelivery(String keycloakSub, UUID deliveryId) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+        checkDeliveryAccess(delivery, userInfo);
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<DeliveryRouteResponseDto> getDeliveryRoutes(
+            String keycloakSub, UUID deliveryId, Pageable pageable) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+        checkDeliveryAccess(delivery, userInfo);
+        return deliveryRouteService.getRoutesByDelivery(deliveryId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public DeliveryRouteResponseDto getDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+        checkDeliveryAccess(delivery, userInfo);
+        return deliveryRouteService.getRouteByDelivery(deliveryId, routeId);
+    }
+
+    private UserResponseDto getUserInfo(String keycloakSub) {
+        return userServiceClient.getUserBySub(keycloakSub).getData();
+    }
+
+    private void checkDeliveryAccess(Delivery delivery, UserResponseDto userInfo) {
+        switch (userInfo.getRole()) {
+            case MASTER -> { }
+            case HUB_MANAGER -> {
+                if (userInfo.getHubId() == null ||
+                    !userInfo.getHubId().equals(delivery.getOriginHubId()) &&
+                    !userInfo.getHubId().equals(delivery.getDestinationHubId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            case DELIVERY_MANAGER -> {
+                if (delivery.getDeliveryPersonId() == null ||
+                    !userInfo.getId().equals(delivery.getDeliveryPersonId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            case SUPPLIER_MANAGER -> {
+                if (userInfo.getCompanyId() == null ||
+                    !userInfo.getCompanyId().equals(delivery.getCompanyId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+        }
     }
 }
