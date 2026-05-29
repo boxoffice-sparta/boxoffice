@@ -6,7 +6,8 @@ public sealed interface TemplateContext permits
         MasterSignupRequestContext,
         UserApprovedContext,
         UserRejectedContext,
-        OrderCanceledContext {
+        OrderCanceledContext,
+        DeliveryStatusContext {
 
     TemplateType type();
 

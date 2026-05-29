@@ -14,7 +14,8 @@ public class InMemoryTemplateRepository implements TemplateRepository {
             TemplateType.USER_APPROVED, "안녕하세요 {name}님, 가입이 승인되었습니다.",
             TemplateType.USER_REJECTED, "안녕하세요 {name}님, 가입이 거절되었습니다. 사유: {reason}",
             TemplateType.ORDER_CANCELED,
-            "주문 #{orderId}이(가) 취소되었습니다. (주문자: {ordererName}, 허브관리자: {hubManagerName}) 사유: {reason}"
+            "주문 #{orderId}이(가) 취소되었습니다. (주문자: {ordererName}, 허브관리자: {hubManagerName}) 사유: {reason}",
+            TemplateType.DELIVERY_STATUS, "배송 #{deliveryId} (주문 #{orderId}) {statusText}. {detail}"
     );
 
     @Override
