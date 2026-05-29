@@ -1,4 +1,4 @@
-package boxoffice.deliveryservice.client.dto.response;
+package boxoffice.deliveryservice.client.entity;
 
 public enum UserRole {
     MASTER,
