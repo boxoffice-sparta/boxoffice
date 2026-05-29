@@ -36,7 +36,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
         "spring.kafka.consumer.auto-offset-reset=earliest"
 })
-@EmbeddedKafka(partitions = 1, topics = {"user.events", "order.events", "notification.dlq"})
+@EmbeddedKafka(partitions = 1, topics = {
+        "user.events", "order.events", "delivery.events", "delivery-manager.events", "notification.dlq"})
 @DisplayName("Kafka 컨슈머 통합")
 class KafkaConsumerIntegrationTest {
 
@@ -81,6 +82,26 @@ class KafkaConsumerIntegrationTest {
         assertThat(slackMessageRepository.findAll().stream()
                 .filter(m -> "it-dup".equals(m.getIdempotencyKey()))
                 .count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("delivery-manager.events / DeliveryAssigned 수신 → 발송시한 예측 후 SlackMessage 저장")
+    void consume_delivery_assigned() {
+        kafkaTemplate.send("delivery-manager.events", """
+                {
+                  "eventType":"DeliveryAssigned","eventId":"it-da","deliveryId":"DLV-1001",
+                  "order":{"orderId":"ORD-1234","products":[{"name":"고등어","quantity":10}],
+                           "requesterNote":"냉장","requestedDeadline":"2026-06-01T18:00:00+09:00"},
+                  "route":{"origin":"서울 중부센터","waypoints":["대전허브"],"destination":"부산 해운대구"},
+                  "totalEstimatedDurationSeconds":10800,
+                  "agent":{"agentId":"AGT-7","name":"김배송","workingHours":{"start":"09:00","end":"18:00"}}
+                }
+                """);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(slackMessageRepository.findByIdempotencyKey("it-da")).isPresent();
+            assertThat(processedEventRepository.existsByEventIdAndConsumerGroup("it-da", GROUP)).isTrue();
+        });
     }
 
     @Test

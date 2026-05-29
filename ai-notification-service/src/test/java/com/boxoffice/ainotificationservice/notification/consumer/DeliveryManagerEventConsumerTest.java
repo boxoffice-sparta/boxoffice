@@ -1,0 +1,117 @@
+package com.boxoffice.ainotificationservice.notification.consumer;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
+
+import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlineContext;
+import com.boxoffice.ainotificationservice.ai.deadline.DispatchDeadlinePrediction;
+import com.boxoffice.ainotificationservice.ai.deadline.OrderLine;
+import com.boxoffice.ainotificationservice.ai.deadline.WorkingHours;
+import com.boxoffice.ainotificationservice.ai.service.DispatchDeadlinePredictor;
+import com.boxoffice.ainotificationservice.notification.entity.message.EventCause;
+import com.boxoffice.ainotificationservice.notification.entity.message.Recipient;
+import com.boxoffice.ainotificationservice.notification.repository.ProcessedEventRepository;
+import com.boxoffice.ainotificationservice.notification.service.NotificationService;
+import com.boxoffice.ainotificationservice.notification.template.DispatchDeadlineNotificationContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@DisplayName("DeliveryManagerEventConsumer")
+@ExtendWith(MockitoExtension.class)
+class DeliveryManagerEventConsumerTest {
+
+    private static final String CHANNEL = "C-TEST";
+
+    @Mock
+    private ProcessedEventRepository processedEventRepository;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private DispatchDeadlinePredictor predictor;
+
+    private DeliveryManagerEventConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        IdempotentEventProcessor idempotentProcessor = new IdempotentEventProcessor(processedEventRepository);
+        consumer = new DeliveryManagerEventConsumer(
+                objectMapper, idempotentProcessor, notificationService, predictor, CHANNEL);
+    }
+
+    @Test
+    @DisplayName("DeliveryAssigned - 이벤트를 예측 입력으로 매핑하고, 예측 결과를 알림으로 발송")
+    void delivery_assigned_predicts_and_sends() {
+        // given
+        given(processedEventRepository.existsByEventIdAndConsumerGroup(any(), any())).willReturn(false);
+        LocalDateTime deadline = LocalDateTime.of(2026, 6, 1, 14, 30);
+        given(predictor.predict(any()))
+                .willReturn(DispatchDeadlinePrediction.llm(deadline, "납기 역산 결과", 0.9));
+        String message = """
+                {
+                  "eventType":"DeliveryAssigned",
+                  "eventId":"evt-da-1",
+                  "deliveryId":"DLV-1001",
+                  "order":{
+                    "orderId":"ORD-1234","ordererName":"홍길동","orderedAt":"2026-05-27T10:30:00+09:00",
+                    "products":[{"name":"고등어","quantity":10}],
+                    "requesterNote":"냉장 보관 필수","requestedDeadline":"2026-06-01T18:00:00+09:00"
+                  },
+                  "route":{"origin":"서울 중부센터","waypoints":["대전허브"],"destination":"부산 해운대구 센텀로 99"},
+                  "totalEstimatedDurationSeconds":10800,
+                  "agent":{"agentId":"AGT-7","name":"김배송","workingHours":{"start":"09:00","end":"18:00"}}
+                }
+                """;
+
+        // when
+        consumer.consume(message);
+
+        // then - 예측 입력 매핑 검증
+        ArgumentCaptor<DispatchDeadlineContext> captor = ArgumentCaptor.forClass(DispatchDeadlineContext.class);
+        then(predictor).should().predict(captor.capture());
+        DispatchDeadlineContext input = captor.getValue();
+        assertThat(input.requestedDeadline()).isEqualTo(LocalDateTime.of(2026, 6, 1, 18, 0));
+        assertThat(input.products()).containsExactly(new OrderLine("고등어", 10));
+        assertThat(input.route().destination()).isEqualTo("부산 해운대구 센텀로 99");
+        assertThat(input.totalEstimatedDuration()).isEqualTo(Duration.ofSeconds(10800));
+        assertThat(input.agentWorkingHours()).isEqualTo(new WorkingHours(LocalTime.of(9, 0), LocalTime.of(18, 0)));
+
+        // then - 예측 결과 발송 검증
+        then(notificationService).should().sendFromEvent(
+                eq("evt-da-1"),
+                eq(Recipient.channel(CHANNEL)),
+                eq(new DispatchDeadlineNotificationContext("김배송", "ORD-1234", deadline, "납기 역산 결과")),
+                eq(new EventCause("evt-da-1", "delivery-manager-service")));
+    }
+
+    @Test
+    @DisplayName("알 수 없는 eventType - 예측·발송 모두 호출하지 않음")
+    void unknown_event_type_skipped() {
+        // given
+        String message = """
+                {"eventType":"DeliveryUnassigned","eventId":"evt-9"}
+                """;
+
+        // when
+        consumer.consume(message);
+
+        // then
+        then(predictor).should(never()).predict(any());
+        then(notificationService).should(never()).sendFromEvent(any(), any(), any(), any());
+    }
+}

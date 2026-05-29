@@ -15,7 +15,9 @@ public class InMemoryTemplateRepository implements TemplateRepository {
             TemplateType.USER_REJECTED, "안녕하세요 {name}님, 가입이 거절되었습니다. 사유: {reason}",
             TemplateType.ORDER_CANCELED,
             "주문 #{orderId}이(가) 취소되었습니다. (주문자: {ordererName}, 허브관리자: {hubManagerName}) 사유: {reason}",
-            TemplateType.DELIVERY_STATUS, "배송 #{deliveryId} (주문 #{orderId}) {statusText}. {detail}"
+            TemplateType.DELIVERY_STATUS, "배송 #{deliveryId} (주문 #{orderId}) {statusText}. {detail}",
+            TemplateType.DISPATCH_DEADLINE,
+            "{agentName}님, 주문 #{orderId}의 발송 시한은 {deadline} 입니다. (사유: {reasoning})"
     );
 
     @Override

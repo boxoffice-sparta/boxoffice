@@ -7,7 +7,8 @@ public sealed interface TemplateContext permits
         UserApprovedContext,
         UserRejectedContext,
         OrderCanceledContext,
-        DeliveryStatusContext {
+        DeliveryStatusContext,
+        DispatchDeadlineNotificationContext {
 
     TemplateType type();
 
