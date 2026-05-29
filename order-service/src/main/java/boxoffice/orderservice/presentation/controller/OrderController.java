@@ -54,13 +54,13 @@ public class OrderController {
     }
 
   @PatchMapping("/{orderId}")
-  public ResponseEntity<CreateOrderResponseDto> updateOrder(
+  public ResponseEntity<ApiResponse<CreateOrderResponseDto>> updateOrder(
       @RequestHeader("X-User-Id") String keycloakId,
       @PathVariable UUID orderId,
       @RequestBody UpdateOrderRequest request
   ) {
     CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, request, keycloakId);
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response));
   }
 
     private CreateOrderCommand toCommand(CreateOrderRequestDto dto) {
