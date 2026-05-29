@@ -44,7 +44,8 @@ public class DeliveryController {
             @RequestHeader("X-User-Id") String keycloakSub,
             @PathVariable UUID deliveryId,
             @PageableDefault(sort = "sequence", direction = Sort.Direction.ASC) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(deliveryService.getDeliveryRoutes(keycloakSub, deliveryId, pageable)));
+        return ResponseEntity.ok(
+                ApiResponse.success(deliveryService.getDeliveryRoutes(keycloakSub, deliveryId, pageable)));
     }
 
     @GetMapping("/{deliveryId}/routes/{routeId}")
@@ -52,6 +53,7 @@ public class DeliveryController {
             @RequestHeader("X-User-Id") String keycloakSub,
             @PathVariable UUID deliveryId,
             @PathVariable UUID routeId) {
-        return ResponseEntity.ok(ApiResponse.success(deliveryService.getDeliveryRoute(keycloakSub, deliveryId, routeId)));
+        return ResponseEntity.ok(
+                ApiResponse.success(deliveryService.getDeliveryRoute(keycloakSub, deliveryId, routeId)));
     }
 }

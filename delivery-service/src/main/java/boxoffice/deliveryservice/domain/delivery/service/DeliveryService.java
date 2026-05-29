@@ -71,8 +71,10 @@ public class DeliveryService {
         Page<Delivery> deliveries = switch (userInfo.getRole()) {
             case MASTER -> deliveryRepository.findAllByDeletedAtIsNull(pageable);
             case HUB_MANAGER -> deliveryRepository.findAllByHubIdAndDeletedAtIsNull(userInfo.getHubId(), pageable);
-            case DELIVERY_MANAGER -> deliveryRepository.findAllByDeliveryPersonIdAndDeletedAtIsNull(userInfo.getId(), pageable);
-            case SUPPLIER_MANAGER -> deliveryRepository.findAllByCompanyIdAndDeletedAtIsNull(userInfo.getCompanyId(), pageable);
+            case DELIVERY_MANAGER ->
+                deliveryRepository.findAllByDeliveryPersonIdAndDeletedAtIsNull(userInfo.getId(), pageable);
+            case SUPPLIER_MANAGER ->
+                deliveryRepository.findAllByCompanyIdAndDeletedAtIsNull(userInfo.getCompanyId(), pageable);
         };
 
         return PageResponse.of(deliveries.map(DeliveryResponseDto::from));
@@ -88,7 +90,8 @@ public class DeliveryService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DeliveryRouteResponseDto> getDeliveryRoutes(String keycloakSub, UUID deliveryId, Pageable pageable) {
+    public PageResponse<DeliveryRouteResponseDto> getDeliveryRoutes(
+            String keycloakSub, UUID deliveryId, Pageable pageable) {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
@@ -111,11 +114,11 @@ public class DeliveryService {
 
     private void checkDeliveryAccess(Delivery delivery, UserResponseDto userInfo) {
         switch (userInfo.getRole()) {
-            case MASTER -> {}
+            case MASTER -> { }
             case HUB_MANAGER -> {
                 if (userInfo.getHubId() == null ||
-                    (!userInfo.getHubId().equals(delivery.getOriginHubId()) &&
-                     !userInfo.getHubId().equals(delivery.getDestinationHubId()))) {
+                    !userInfo.getHubId().equals(delivery.getOriginHubId()) &&
+                    !userInfo.getHubId().equals(delivery.getDestinationHubId())) {
                     throw new BaseException(CommonErrorCode.FORBIDDEN);
                 }
             }

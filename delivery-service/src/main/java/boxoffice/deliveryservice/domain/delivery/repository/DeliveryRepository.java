@@ -17,7 +17,9 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
 
     Optional<Delivery> findByIdAndDeletedAtIsNull(UUID id);
 
-    @Query("SELECT d FROM Delivery d WHERE (d.originHubId = :hubId OR d.destinationHubId = :hubId) AND d.deletedAt IS NULL")
+    @Query("SELECT d FROM Delivery d "
+            + "WHERE (d.originHubId = :hubId OR d.destinationHubId = :hubId) "
+            + "AND d.deletedAt IS NULL")
     Page<Delivery> findAllByHubIdAndDeletedAtIsNull(@Param("hubId") UUID hubId, Pageable pageable);
 
     Page<Delivery> findAllByDeliveryPersonIdAndDeletedAtIsNull(UUID deliveryPersonId, Pageable pageable);
