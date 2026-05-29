@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record OrderCanceledEvent(
         String eventId,
         String orderId,
-        String reason
+        String reason,
+        String ordererName,
+        String hubManagerName
 ) {
 }

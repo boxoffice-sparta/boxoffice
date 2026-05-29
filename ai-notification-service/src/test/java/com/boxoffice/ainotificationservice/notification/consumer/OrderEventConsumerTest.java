@@ -46,7 +46,8 @@ class OrderEventConsumerTest {
         // given
         given(processedEventRepository.existsByEventIdAndConsumerGroup(any(), any())).willReturn(false);
         String message = """
-                {"eventType":"OrderCanceled","eventId":"evt-1","orderId":"ORD-100","reason":"재고 부족"}
+                {"eventType":"OrderCanceled","eventId":"evt-1","orderId":"ORD-100","reason":"재고 부족",
+                 "ordererName":"홍길동","hubManagerName":"김허브"}
                 """;
 
         // when
@@ -56,7 +57,7 @@ class OrderEventConsumerTest {
         then(notificationService).should().sendFromEvent(
                 eq("evt-1"),
                 eq(Recipient.channel(CHANNEL)),
-                eq(new OrderCanceledContext("ORD-100", "재고 부족")),
+                eq(new OrderCanceledContext("ORD-100", "재고 부족", "홍길동", "김허브")),
                 eq(new EventCause("evt-1", "order-service")));
     }
 

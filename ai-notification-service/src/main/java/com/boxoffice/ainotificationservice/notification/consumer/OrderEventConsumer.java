@@ -45,7 +45,8 @@ public class OrderEventConsumer {
         switch (eventType) {
             case "OrderCanceled" -> {
                 OrderCanceledEvent event = convert(node, OrderCanceledEvent.class);
-                dispatch(event.eventId(), new OrderCanceledContext(event.orderId(), event.reason()));
+                dispatch(event.eventId(), new OrderCanceledContext(
+                        event.orderId(), event.reason(), event.ordererName(), event.hubManagerName()));
             }
             default -> log.warn("처리 대상이 아닌 order 이벤트 타입 - skip. eventType={}", eventType);
         }
