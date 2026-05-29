@@ -479,7 +479,7 @@ class HubServiceTest {
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
-        given(deliveryFeignClient.countActiveDeliveries(hubId)).willReturn(0);
+        given(deliveryFeignClient.countActiveDeliveries(hubId)).willReturn(ApiResponse.success(0));
 
         // when
         HubDeactivateResponseDto response = hubService.deactivateHub(hubId);
@@ -547,7 +547,7 @@ class HubServiceTest {
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
-        given(deliveryFeignClient.countActiveDeliveries(hubId)).willReturn(3);
+        given(deliveryFeignClient.countActiveDeliveries(hubId)).willReturn(ApiResponse.success(3));
 
         // when & then
         assertThatThrownBy(() -> hubService.deactivateHub(hubId))

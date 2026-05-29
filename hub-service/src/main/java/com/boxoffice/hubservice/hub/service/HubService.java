@@ -156,7 +156,9 @@ public class HubService {
             throw new BaseException(HubErrorCode.HUB_NOT_CLOSING);
         }
 
-        int activeDeliveries = deliveryFeignClient.countActiveDeliveries(hubId);
+        ApiResponse<Integer> deliveryResponse = deliveryFeignClient.countActiveDeliveries(hubId);
+        int activeDeliveries = (deliveryResponse != null && deliveryResponse.getData() != null)
+                ? deliveryResponse.getData() : 0;
         if (activeDeliveries > 0) {
             throw new BaseException(HubErrorCode.HUB_HAS_ACTIVE_DELIVERY);
         }
