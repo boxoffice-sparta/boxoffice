@@ -5,6 +5,19 @@ spring:
   application:
     name: ai-notification-service
 
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            model: gemini-2.5-flash
+
+  data:
+    redis:
+      host: ${REDIS_HOST:}
+      port: ${REDIS_PORT:6379}
+
   cloud:
     compatibility-verifier:
       enabled: false
