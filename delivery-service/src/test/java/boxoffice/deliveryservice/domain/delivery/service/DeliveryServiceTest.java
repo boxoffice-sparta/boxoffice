@@ -9,10 +9,14 @@ import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto.HubType
 import boxoffice.deliveryservice.client.dto.response.UserResponseDto;
 import boxoffice.deliveryservice.client.entity.UserRole;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryUpdateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.delivery.entity.DeliveryStatus;
 import boxoffice.deliveryservice.domain.delivery.repository.DeliveryRepository;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.entity.DeliveryRouteStatus;
 import boxoffice.deliveryservice.domain.deliveryroute.service.DeliveryRouteService;
@@ -566,6 +570,372 @@ class DeliveryServiceTest {
                     .isInstanceOf(BaseException.class);
 
             verify(deliveryRouteService, never()).getRouteByDelivery(any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateDelivery()")
+    class UpdateDelivery {
+
+        private final String keycloakSub = "sub-" + UUID.randomUUID();
+
+        private DeliveryUpdateRequestDto buildRequest() {
+            return new DeliveryUpdateRequestDto(
+                    "이순신",
+                    "U99999",
+                    new DeliveryUpdateRequestDto.AddressRequest("11111", "서울시 강남구", "201호")
+            );
+        }
+
+        @Test
+        @DisplayName("성공 - MASTER는 모든 배송 수정 가능")
+        void success_master() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when
+            DeliveryResponseDto result = deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest());
+
+            // then
+            assertThat(result.recipientName()).isEqualTo("이순신");
+        }
+
+        @Test
+        @DisplayName("성공 - HUB_MANAGER는 소속 허브의 배송 수정 가능")
+        void success_hub_manager() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.HUB_MANAGER).hubId(hubId).build();
+            Delivery delivery = Delivery.create(
+                    UUID.randomUUID(), UUID.randomUUID(), hubId, UUID.randomUUID(),
+                    new AddressVO("12345", "서울시 송파구 송파대로 55", "101호"),
+                    "홍길동", "U12345"
+            );
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when
+            DeliveryResponseDto result = deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest());
+
+            // then
+            assertThat(result.recipientName()).isEqualTo("이순신");
+        }
+
+        @Test
+        @DisplayName("실패 - HUB_MANAGER가 다른 허브 배송 수정 시 FORBIDDEN")
+        void fail_hub_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.HUB_MANAGER).hubId(UUID.randomUUID()).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest()))
+                    .isInstanceOf(BaseException.class);
+        }
+
+        @Test
+        @DisplayName("성공 - DELIVERY_MANAGER는 본인 담당 배송 수정 가능")
+        void success_delivery_manager() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(userId).role(UserRole.DELIVERY_MANAGER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+            delivery.assignDeliveryPerson(userId);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when
+            DeliveryResponseDto result = deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest());
+
+            // then
+            assertThat(result.recipientName()).isEqualTo("이순신");
+        }
+
+        @Test
+        @DisplayName("실패 - DELIVERY_MANAGER가 다른 사람 담당 배송 수정 시 FORBIDDEN")
+        void fail_delivery_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.DELIVERY_MANAGER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest()))
+                    .isInstanceOf(BaseException.class);
+        }
+
+        @Test
+        @DisplayName("실패 - SUPPLIER_MANAGER는 항상 FORBIDDEN")
+        void fail_supplier_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.SUPPLIER_MANAGER).companyId(companyId).build();
+            Delivery delivery = createDelivery(companyId);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest()))
+                    .isInstanceOf(BaseException.class);
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 배송 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDelivery(keycloakSub, deliveryId, buildRequest()))
+                    .isInstanceOf(BaseException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateDeliveryStatus()")
+    class UpdateDeliveryStatus {
+
+        private final String keycloakSub = "sub-" + UUID.randomUUID();
+
+        @Test
+        @DisplayName("성공 - MASTER는 배송 상태 변경 가능")
+        void success_master() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+            DeliveryStatusUpdateRequestDto request = new DeliveryStatusUpdateRequestDto(DeliveryStatus.HUB_MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when
+            DeliveryResponseDto result = deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request);
+
+            // then
+            assertThat(result.deliveryStatus()).isEqualTo(DeliveryStatus.HUB_MOVING);
+        }
+
+        @Test
+        @DisplayName("성공 - DELIVERY_MANAGER는 본인 담당 배송 상태 변경 가능")
+        void success_delivery_manager() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(userId).role(UserRole.DELIVERY_MANAGER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+            delivery.assignDeliveryPerson(userId);
+            DeliveryStatusUpdateRequestDto request = new DeliveryStatusUpdateRequestDto(DeliveryStatus.HUB_MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when
+            DeliveryResponseDto result = deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request);
+
+            // then
+            assertThat(result.deliveryStatus()).isEqualTo(DeliveryStatus.HUB_MOVING);
+        }
+
+        @Test
+        @DisplayName("실패 - SUPPLIER_MANAGER는 항상 FORBIDDEN")
+        void fail_supplier_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.SUPPLIER_MANAGER).companyId(companyId).build();
+            Delivery delivery = createDelivery(companyId);
+            DeliveryStatusUpdateRequestDto request = new DeliveryStatusUpdateRequestDto(DeliveryStatus.HUB_MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request))
+                    .isInstanceOf(BaseException.class);
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 배송 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            DeliveryStatusUpdateRequestDto request = new DeliveryStatusUpdateRequestDto(DeliveryStatus.HUB_MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryStatus(keycloakSub, deliveryId, request))
+                    .isInstanceOf(BaseException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateDeliveryRoute()")
+    class UpdateDeliveryRoute {
+
+        private final String keycloakSub = "sub-" + UUID.randomUUID();
+
+        @Test
+        @DisplayName("성공 - MASTER는 배송 경로 수정 가능, DeliveryRouteService에 위임")
+        void success_master() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+            DeliveryRouteUpdateRequestDto request = new DeliveryRouteUpdateRequestDto(new BigDecimal("150.0"), 90);
+            DeliveryRouteResponseDto mockResponse = new DeliveryRouteResponseDto(
+                    routeId, deliveryId, UUID.randomUUID(), UUID.randomUUID(),
+                    null, DeliveryRouteStatus.MOVING, 1,
+                    new BigDecimal("100.5"), 60, new BigDecimal("150.0"), 90, LocalDateTime.now()
+            );
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+            given(deliveryRouteService.updateRoute(routeId, deliveryId, request)).willReturn(mockResponse);
+
+            // when
+            DeliveryRouteResponseDto result = deliveryService.updateDeliveryRoute(keycloakSub, deliveryId, routeId, request);
+
+            // then
+            assertThat(result.actualDistance()).isEqualByComparingTo(new BigDecimal("150.0"));
+            assertThat(result.actualDuration()).isEqualTo(90);
+            verify(deliveryRouteService).updateRoute(routeId, deliveryId, request);
+        }
+
+        @Test
+        @DisplayName("실패 - SUPPLIER_MANAGER는 항상 FORBIDDEN, 경로 서비스 호출 안 함")
+        void fail_supplier_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.SUPPLIER_MANAGER).companyId(companyId).build();
+            Delivery delivery = createDelivery(companyId);
+            DeliveryRouteUpdateRequestDto request = new DeliveryRouteUpdateRequestDto(new BigDecimal("150.0"), 90);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryRoute(keycloakSub, deliveryId, routeId, request))
+                    .isInstanceOf(BaseException.class);
+            verify(deliveryRouteService, never()).updateRoute(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 배송 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            DeliveryRouteUpdateRequestDto request = new DeliveryRouteUpdateRequestDto(new BigDecimal("150.0"), 90);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryRoute(keycloakSub, deliveryId, routeId, request))
+                    .isInstanceOf(BaseException.class);
+            verify(deliveryRouteService, never()).updateRoute(any(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateDeliveryRouteStatus()")
+    class UpdateDeliveryRouteStatus {
+
+        private final String keycloakSub = "sub-" + UUID.randomUUID();
+
+        @Test
+        @DisplayName("성공 - MASTER는 배송 경로 상태 변경 가능, DeliveryRouteService에 위임")
+        void success_master() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            Delivery delivery = createDelivery(UUID.randomUUID());
+            DeliveryRouteStatusUpdateRequestDto request = new DeliveryRouteStatusUpdateRequestDto(DeliveryRouteStatus.MOVING);
+            DeliveryRouteResponseDto mockResponse = new DeliveryRouteResponseDto(
+                    routeId, deliveryId, UUID.randomUUID(), UUID.randomUUID(),
+                    null, DeliveryRouteStatus.MOVING, 1,
+                    new BigDecimal("100.5"), 60, null, null, LocalDateTime.now()
+            );
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+            given(deliveryRouteService.updateRouteStatus(routeId, deliveryId, request)).willReturn(mockResponse);
+
+            // when
+            DeliveryRouteResponseDto result = deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request);
+
+            // then
+            assertThat(result.status()).isEqualTo(DeliveryRouteStatus.MOVING);
+            verify(deliveryRouteService).updateRouteStatus(routeId, deliveryId, request);
+        }
+
+        @Test
+        @DisplayName("실패 - SUPPLIER_MANAGER는 항상 FORBIDDEN, 경로 서비스 호출 안 함")
+        void fail_supplier_manager_forbidden() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.SUPPLIER_MANAGER).companyId(companyId).build();
+            Delivery delivery = createDelivery(companyId);
+            DeliveryRouteStatusUpdateRequestDto request = new DeliveryRouteStatusUpdateRequestDto(DeliveryRouteStatus.MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.of(delivery));
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request))
+                    .isInstanceOf(BaseException.class);
+            verify(deliveryRouteService, never()).updateRouteStatus(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("실패 - 존재하지 않는 배송 ID")
+        void fail_not_found() {
+            // given
+            UUID deliveryId = UUID.randomUUID();
+            UUID routeId = UUID.randomUUID();
+            UserResponseDto userInfo = UserResponseDto.builder().id(UUID.randomUUID()).role(UserRole.MASTER).build();
+            DeliveryRouteStatusUpdateRequestDto request = new DeliveryRouteStatusUpdateRequestDto(DeliveryRouteStatus.MOVING);
+
+            given(userServiceClient.getUserBySub(keycloakSub)).willReturn(ApiResponse.success(userInfo));
+            given(deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> deliveryService.updateDeliveryRouteStatus(keycloakSub, deliveryId, routeId, request))
+                    .isInstanceOf(BaseException.class);
+            verify(deliveryRouteService, never()).updateRouteStatus(any(), any(), any());
         }
     }
 }

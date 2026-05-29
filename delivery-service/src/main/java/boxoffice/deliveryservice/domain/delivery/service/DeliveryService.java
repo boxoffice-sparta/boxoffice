@@ -5,10 +5,14 @@ import boxoffice.deliveryservice.client.UserServiceClient;
 import boxoffice.deliveryservice.client.dto.response.HubRouteResponseDto;
 import boxoffice.deliveryservice.client.dto.response.UserResponseDto;
 import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryCreateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.delivery.dto.request.DeliveryUpdateRequestDto;
 import boxoffice.deliveryservice.domain.delivery.dto.response.DeliveryResponseDto;
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import boxoffice.deliveryservice.domain.delivery.exception.DeliveryErrorCode;
 import boxoffice.deliveryservice.domain.delivery.repository.DeliveryRepository;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteStatusUpdateRequestDto;
+import boxoffice.deliveryservice.domain.deliveryroute.dto.request.DeliveryRouteUpdateRequestDto;
 import boxoffice.deliveryservice.domain.deliveryroute.dto.response.DeliveryRouteResponseDto;
 import boxoffice.deliveryservice.domain.deliveryroute.service.DeliveryRouteService;
 import com.boxoffice.common.exception.BaseException;
@@ -110,6 +114,60 @@ public class DeliveryService {
 
     private UserResponseDto getUserInfo(String keycloakSub) {
         return userServiceClient.getUserBySub(keycloakSub).getData();
+    }
+    public DeliveryResponseDto updateDelivery(String keycloakSub, UUID deliveryId, DeliveryUpdateRequestDto request) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateInfo(request.recipientName(), request.recipientSlackId(), request.deliveryAddress().toAddressVO());
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    public DeliveryResponseDto updateDeliveryStatus(String keycloakSub, UUID deliveryId, DeliveryStatusUpdateRequestDto request) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        delivery.updateStatus(request.status());
+        return DeliveryResponseDto.from(delivery);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteUpdateRequestDto request) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRoute(routeId, deliveryId, request);
+    }
+
+    public DeliveryRouteResponseDto updateDeliveryRouteStatus(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteStatusUpdateRequestDto request) {
+        UserResponseDto userInfo = getUserInfo(keycloakSub);
+        Delivery delivery = findDeliveryOrThrow(deliveryId);
+        checkWriteAccess(delivery, userInfo);
+        return deliveryRouteService.updateRouteStatus(routeId, deliveryId, request);
+    }
+
+    private Delivery findDeliveryOrThrow(UUID deliveryId) {
+        return deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
+                .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+    }
+
+    private void checkWriteAccess(Delivery delivery, UserResponseDto userInfo) {
+        switch (userInfo.getRole()) {
+            case MASTER -> { }
+            case HUB_MANAGER -> {
+                if (userInfo.getHubId() == null ||
+                    !userInfo.getHubId().equals(delivery.getOriginHubId()) &&
+                    !userInfo.getHubId().equals(delivery.getDestinationHubId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            case DELIVERY_MANAGER -> {
+                if (delivery.getDeliveryPersonId() == null ||
+                    !userInfo.getId().equals(delivery.getDeliveryPersonId())) {
+                    throw new BaseException(CommonErrorCode.FORBIDDEN);
+                }
+            }
+            default -> throw new BaseException(CommonErrorCode.FORBIDDEN);
+        }
     }
 
     private void checkDeliveryAccess(Delivery delivery, UserResponseDto userInfo) {
