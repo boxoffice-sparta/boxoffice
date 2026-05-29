@@ -6,5 +6,5 @@ import java.util.UUID;
 
 public record HubAssignManagerRequestDto(
         @NotNull UUID managerId
-) {}
+) { }
 

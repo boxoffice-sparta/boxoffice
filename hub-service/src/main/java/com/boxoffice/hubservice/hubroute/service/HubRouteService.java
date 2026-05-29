@@ -26,7 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -214,7 +219,9 @@ public class HubRouteService {
     }
 
     private Hub findCentralHub(Hub hub, Set<UUID> centralHubIds) {
-        if (hub.getHubType() == HubType.CENTRAL) return hub;
+        if (hub.getHubType() == HubType.CENTRAL) {
+            return hub;
+        }
 
         UUID centralId = hubRouteRepository.findAllByOriginHubId(hub.getId()).stream()
                 .map(HubRoute::getDestinationHubId)
