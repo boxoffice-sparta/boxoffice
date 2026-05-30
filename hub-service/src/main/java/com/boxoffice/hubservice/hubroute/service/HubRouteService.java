@@ -17,6 +17,7 @@ import com.boxoffice.hubservice.hubroute.entity.HubRoute;
 import com.boxoffice.hubservice.hubroute.repository.HubRouteRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Page;
@@ -25,7 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -82,13 +88,18 @@ public class HubRouteService {
         return HubRouteGetResponseDto.from(route, originHub, destinationHub);
     }
 
-    public PageResponse<HubRouteGetResponseDto> getHubRoutes(UUID originHubId, UUID destinationHubId, int page, int size) {
+    public PageResponse<HubRouteGetResponseDto> getHubRoutes(
+            UUID originHubId, UUID destinationHubId, int page, int size) {
         Pageable pageable = PageableUtils.ofDefault(page, size);
 
         QHubRoute qHubRoute = QHubRoute.hubRoute;
         BooleanBuilder builder = new BooleanBuilder();
-        if (originHubId != null) builder.and(qHubRoute.originHubId.eq(originHubId));
-        if (destinationHubId != null) builder.and(qHubRoute.destinationHubId.eq(destinationHubId));
+        if (originHubId != null) {
+            builder.and(qHubRoute.originHubId.eq(originHubId));
+        }
+        if (destinationHubId != null) {
+            builder.and(qHubRoute.destinationHubId.eq(destinationHubId));
+        }
 
         Page<HubRoute> routes = hubRouteRepository.findAll(builder, pageable);
 
@@ -99,15 +110,23 @@ public class HubRouteService {
         Map<UUID, Hub> hubMap = hubRepository.findAllById(hubIds).stream()
                 .collect(Collectors.toMap(Hub::getId, Function.identity()));
 
-        return PageResponse.of(routes.map(r ->
-                HubRouteGetResponseDto.from(r,
-                        hubMap.get(r.getOriginHubId()),
-                        hubMap.get(r.getDestinationHubId()))
-        ));
+        return PageResponse.of(routes.map(r -> {
+            Hub origin = hubMap.get(r.getOriginHubId());
+            Hub destination = hubMap.get(r.getDestinationHubId());
+            if (origin == null || destination == null) {
+                throw new BaseException(HubErrorCode.HUB_NOT_FOUND);
+            }
+            return HubRouteGetResponseDto.from(r, origin, destination);
+        }));
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "hub-routes", allEntries = true)
     public HubRouteGetResponseDto updateHubRoute(UUID routeId, HubRouteUpdateRequestDto request) {
+        if (request.estimatedDurationMin() == null && request.estimatedDistanceKm() == null) {
+            throw new BaseException(HubErrorCode.NO_FIELDS_TO_UPDATE);
+        }
+
         HubRoute route = hubRouteRepository.findById(routeId)
                 .orElseThrow(() -> new BaseException(HubErrorCode.HUB_ROUTE_NOT_FOUND));
 
@@ -116,6 +135,7 @@ public class HubRouteService {
                 : null;
 
         route.update(request.estimatedDurationMin(), distanceKm);
+        hubRouteRepository.saveAndFlush(route);
 
         Hub originHub = hubRepository.findById(route.getOriginHubId())
                 .orElseThrow(() -> new BaseException(HubErrorCode.HUB_NOT_FOUND));
@@ -126,6 +146,7 @@ public class HubRouteService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "hub-routes", allEntries = true)
     public void deleteHubRoute(UUID routeId) {
         HubRoute route = hubRouteRepository.findById(routeId)
                 .orElseThrow(() -> new BaseException(HubErrorCode.HUB_ROUTE_NOT_FOUND));
@@ -198,7 +219,9 @@ public class HubRouteService {
     }
 
     private Hub findCentralHub(Hub hub, Set<UUID> centralHubIds) {
-        if (hub.getHubType() == HubType.CENTRAL) return hub;
+        if (hub.getHubType() == HubType.CENTRAL) {
+            return hub;
+        }
 
         UUID centralId = hubRouteRepository.findAllByOriginHubId(hub.getId()).stream()
                 .map(HubRoute::getDestinationHubId)

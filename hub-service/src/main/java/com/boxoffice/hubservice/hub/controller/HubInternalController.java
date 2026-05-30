@@ -2,17 +2,25 @@ package com.boxoffice.hubservice.hub.controller;
 
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.hubservice.hub.dto.request.HubAssignManagerRequestDto;
+import com.boxoffice.hubservice.hub.dto.response.HubActiveResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubGetResponseDto;
 import com.boxoffice.hubservice.hub.service.HubService;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+@Hidden
 @RestController
-@RequestMapping("/internal/hubs")
+@RequestMapping("/internal/v1/hubs")
 @RequiredArgsConstructor
 public class HubInternalController {
 
@@ -26,9 +34,7 @@ public class HubInternalController {
     }
 
     @GetMapping("/{hubId}/active")
-    public ResponseEntity<ApiResponse<HubGetResponseDto>> getActiveHub(
-            @PathVariable UUID hubId
-    ) {
+    public ResponseEntity<ApiResponse<HubActiveResponseDto>> getActiveHub(@PathVariable UUID hubId) {
         return ResponseEntity.ok(ApiResponse.success(hubService.getActiveHub(hubId)));
     }
 
