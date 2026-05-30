@@ -19,7 +19,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/internal/companies")
+@RequestMapping("/internal/v1/companies")
 public class CompanyInternalController {
 
     private final CompanyInternalFacade companyInternalFacade;

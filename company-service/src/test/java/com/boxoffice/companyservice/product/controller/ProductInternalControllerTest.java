@@ -44,7 +44,7 @@ class ProductInternalControllerTest {
         ));
 
         // when & then
-        mockMvc.perform(post("/internal/products/hubs/stock-counts")
+        mockMvc.perform(post("/internal/v1/products/hubs/stock-counts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -66,7 +66,7 @@ class ProductInternalControllerTest {
     @Test
     @DisplayName("실패 - hubIds가 비어 있으면 validation error를 반환한다")
     void getHubStockCountsWithEmptyHubIdsReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/internal/products/hubs/stock-counts")
+        mockMvc.perform(post("/internal/v1/products/hubs/stock-counts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

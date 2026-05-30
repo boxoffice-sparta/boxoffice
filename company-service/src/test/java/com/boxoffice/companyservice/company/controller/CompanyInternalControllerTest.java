@@ -46,7 +46,7 @@ class CompanyInternalControllerTest {
         ));
 
         // when & then
-        mockMvc.perform(get("/internal/companies").param("hubId", hubId.toString()))
+        mockMvc.perform(get("/internal/v1/companies").param("hubId", hubId.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is(200)))
                 .andExpect(jsonPath("$.message", is("SUCCESS")))
@@ -70,7 +70,7 @@ class CompanyInternalControllerTest {
         UUID toHubId = UUID.randomUUID();
 
         // when & then
-        mockMvc.perform(patch("/internal/companies/bulk-hub-transfer")
+        mockMvc.perform(patch("/internal/v1/companies/bulk-hub-transfer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
