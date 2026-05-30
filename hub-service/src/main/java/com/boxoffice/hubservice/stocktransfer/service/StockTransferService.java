@@ -55,7 +55,7 @@ public class StockTransferService {
     private final CompanyFeignClient companyFeignClient;
     private final ApplicationEventPublisher eventPublisher;
 
-    private record Candidate(Hub hub, BigDecimal distanceKm, int availableCapacity) {
+    private record Candidate(Hub hub, BigDecimal distanceKm, long availableCapacity) {
     }
 
     public TransferPlanResponseDto getTransferPlan(UUID fromHubId) {
@@ -282,7 +282,7 @@ public class StockTransferService {
                     if (toHub == null || toHub.isInactive() || toHub.isClosing() || toHub.getCapacity() == null) {
                         return null;
                     }
-                    int available = toHub.getCapacity() - stockCounts.getOrDefault(toHub.getId(), 0L).intValue();
+                    long available = (long) toHub.getCapacity() - stockCounts.getOrDefault(toHub.getId(), 0L);
                     if (available <= 0) {
                         return null;
                     }
@@ -294,6 +294,7 @@ public class StockTransferService {
                 .toList();
     }
 
+    // First Fit Decreasing: 재고 많은 회사부터 가용용량/거리 효율이 높은 허브에 순서대로 배정 (bin packing 근사 최적화)
     private Map<UUID, List<CompanyDetailResponseDto>> runFFD(
             List<CompanyDetailResponseDto> companies, List<Candidate> candidates) {
         if (candidates.isEmpty()) {
@@ -304,7 +305,7 @@ public class StockTransferService {
                 .sorted(Comparator.comparingInt(CompanyDetailResponseDto::stockCount).reversed())
                 .toList();
 
-        Map<UUID, Integer> remaining = candidates.stream()
+        Map<UUID, Long> remaining = candidates.stream()
                 .collect(Collectors.toMap(c -> c.hub().getId(), Candidate::availableCapacity));
 
         Map<UUID, List<CompanyDetailResponseDto>> assignment = new LinkedHashMap<>();
@@ -314,7 +315,7 @@ public class StockTransferService {
             boolean assigned = false;
             for (Candidate candidate : candidates) {
                 UUID hubId = candidate.hub().getId();
-                int cap = remaining.getOrDefault(hubId, 0);
+                long cap = remaining.getOrDefault(hubId, 0L);
                 if (company.stockCount() <= cap) {
                     assignment.get(hubId).add(company);
                     remaining.put(hubId, cap - company.stockCount());
