@@ -102,7 +102,7 @@ public class CompanyService {
             throw new BaseException(CommonErrorCode.INVALID_INPUT);
         }
 
-        List<UUID> distinctCompanyIds = new java.util.LinkedHashSet<>(companyIds).stream().toList();
+        List<UUID> distinctCompanyIds = new LinkedHashSet<>(companyIds).stream().toList();
         long updatedCount = companyRepository.bulkUpdateHubId(distinctCompanyIds, toHubId);
 
         if (updatedCount != distinctCompanyIds.size()) {
