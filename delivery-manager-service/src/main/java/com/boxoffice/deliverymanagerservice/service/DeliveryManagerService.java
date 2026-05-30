@@ -6,6 +6,8 @@ import com.boxoffice.deliverymanagerservice.dto.*;
 import com.boxoffice.deliverymanagerservice.entity.DeliveryManager;
 import com.boxoffice.deliverymanagerservice.entity.ManagerStatus;
 import com.boxoffice.deliverymanagerservice.exception.DeliveryManagerErrorCode;
+import com.boxoffice.deliverymanagerservice.kafka.DeliveryNotificationProducer;
+import com.boxoffice.deliverymanagerservice.kafka.event.DeliveryAssignedEvent;
 import com.boxoffice.deliverymanagerservice.repository.DeliveryManagerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Pageable;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -23,6 +28,7 @@ public class DeliveryManagerService {
 
     private final DeliveryManagerRepository deliveryManagerRepository;
     private final HubClient hubClient;
+    private final DeliveryNotificationProducer notificationProducer;
 
     @Transactional
     public DeliveryManagerResponseDto createDeliveryManager(DeliveryManagerCreateRequestDto request, String role) {
@@ -95,24 +101,6 @@ public class DeliveryManagerService {
         manager.softDelete(UUID.fromString(requesterId));
     }
 
-    @Transactional
-    public DeliveryAssignResponseDto assignNextDeliveryManager(DeliveryAssignRequestDto request) {
-        DeliveryManager manager = deliveryManagerRepository
-                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByLastAssignedAtAsc(
-                        request.getHubId(), request.getType(), ManagerStatus.WAITING)
-                .orElseThrow(() -> new BaseException(DeliveryManagerErrorCode.DELIVERY_MANAGER_NOT_FOUND));
-
-        manager.recordAssignment();
-        log.info("[DeliveryManagerAssign] 기사님 자동 배정 완료. ManagerId: {}, HubId: {}", manager.getId(), request.getHubId());
-
-        return new DeliveryAssignResponseDto(manager.getId());
-    }
-
-    private void checkAdminRole(String role) {
-        if (!"MASTER".equals(role) && !"HUB_MANAGER".equals(role)) {
-            throw new BaseException(DeliveryManagerErrorCode.FORBIDDEN_ACCESS);
-        }
-    }
 
     @Transactional
     public void clearDeliveryManagerHubId(UUID hubId) {
@@ -148,5 +136,75 @@ public class DeliveryManagerService {
         );
 
         return managerPage.map(DeliveryManagerResponseDto::from);
+    }
+
+    @Transactional
+    public DeliveryAssignResponseDto assignNextDeliveryManager(DeliveryAssignRequestDto request) {
+        DeliveryManager manager = deliveryManagerRepository
+                .findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByLastAssignedAtAsc(
+                        request.getHubId(), request.getType(), ManagerStatus.WAITING)
+                .orElseThrow(() -> new BaseException(DeliveryManagerErrorCode.DELIVERY_MANAGER_NOT_FOUND));
+
+        manager.recordAssignment();
+        log.info("[DeliveryManagerAssign] 기사님 자동 배정 완료. ManagerId: {}, HubId: {}", manager.getId(), request.getHubId());
+
+        DeliveryAssignedEvent event = DeliveryAssignedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .eventType("DeliveryAssigned")
+                .occurredAt(java.time.ZonedDateTime.now().format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                .version("1")
+                .deliveryId(request.getDeliveryId())
+                .totalEstimatedDurationSeconds(request.getTotalEstimatedDurationSeconds())
+                .order(mapToEventOrder(request.getOrder()))
+                .route(mapToEventRoute(request.getRoute()))
+                .agent(DeliveryAssignedEvent.AgentInfo.builder()
+                        .agentId(manager.getUserId().toString())
+                        // TODO: 이름과 근무시간은 임시 하드코딩. 나중에 User 서비스에서 가져오거나 DB에 추가 필요
+                        .name("김배송")
+                        .workingHours(DeliveryAssignedEvent.WorkingHours.builder()
+                                .start("09:00")
+                                .end("18:00")
+                                .build())
+                        .build())
+                .build();
+
+        notificationProducer.sendDeliveryAssignedEvent(event);
+
+        return new DeliveryAssignResponseDto(manager.getId());
+    }
+
+    private DeliveryAssignedEvent.OrderInfo mapToEventOrder(DeliveryAssignRequestDto.OrderInfo orderDto) {
+        if (orderDto == null) return null;
+        List<DeliveryAssignedEvent.ProductInfo> products = orderDto.getProducts().stream()
+                .map(p -> DeliveryAssignedEvent.ProductInfo.builder()
+                        .name(p.getName())
+                        .quantity(p.getQuantity())
+                        .build())
+                .toList();
+
+        return DeliveryAssignedEvent.OrderInfo.builder()
+                .orderId(orderDto.getOrderId())
+                .ordererName(orderDto.getOrdererName())
+                .orderedAt(orderDto.getOrderedAt())
+                .products(products)
+                .requesterNote(orderDto.getRequesterNote())
+                .requestedDeadline(orderDto.getRequestedDeadline())
+                .build();
+    }
+
+    private DeliveryAssignedEvent.RouteInfo mapToEventRoute(DeliveryAssignRequestDto.RouteInfo routeDto) {
+        if (routeDto == null) return null;
+        return DeliveryAssignedEvent.RouteInfo.builder()
+                .origin(routeDto.getOrigin())
+                .waypoints(routeDto.getWaypoints())
+                .destination(routeDto.getDestination())
+                .build();
+    }
+
+
+    private void checkAdminRole(String role) {
+        if (!"MASTER".equals(role) && !"HUB_MANAGER".equals(role)) {
+            throw new BaseException(DeliveryManagerErrorCode.FORBIDDEN_ACCESS);
+        }
     }
 }
