@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name = "delivery-manager-service")
+@FeignClient(name = "delivery-manager-service", fallbackFactory = DeliveryManagerFeignClientFallbackFactory.class)
 public interface DeliveryManagerFeignClient {
 
     @PatchMapping("/internal/v1/delivery-managers/clear-hub/{hubId}")
