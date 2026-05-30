@@ -1,24 +1,25 @@
-package com.boxoffice.deliverymanagerservice.dto;
+package com.boxoffice.deliverymanagerservice.kafka.event;
 
-import com.boxoffice.deliverymanagerservice.entity.DeliveryType;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import java.util.List;
-import java.util.UUID;
 
 @Getter
-@NoArgsConstructor
-public class DeliveryAssignRequestDto {
-    private UUID hubId;
-    private DeliveryType type;
+@Builder
+public class DeliveryAssignedEvent {
+
+    private String eventId;
+    private String eventType;
+    private String occurredAt;
+    private String version;
 
     private String deliveryId;
     private OrderInfo order;
     private RouteInfo route;
     private Integer totalEstimatedDurationSeconds;
+    private AgentInfo agent;
 
-    @Getter
-    @NoArgsConstructor
+    @Getter @Builder
     public static class OrderInfo {
         private String orderId;
         private String ordererName;
@@ -28,18 +29,29 @@ public class DeliveryAssignRequestDto {
         private String requestedDeadline;
     }
 
-    @Getter
-    @NoArgsConstructor
+    @Getter @Builder
     public static class ProductInfo {
         private String name;
         private Integer quantity;
     }
 
-    @Getter
-    @NoArgsConstructor
+    @Getter @Builder
     public static class RouteInfo {
         private String origin;
         private List<String> waypoints;
         private String destination;
+    }
+
+    @Getter @Builder
+    public static class AgentInfo {
+        private String agentId;
+        private String name;
+        private WorkingHours workingHours;
+    }
+
+    @Getter @Builder
+    public static class WorkingHours {
+        private String start;
+        private String end;
     }
 }
