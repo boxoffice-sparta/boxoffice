@@ -55,6 +55,9 @@ public class ProductService {
         PriceVO price = request.getPrice() == null ? null : PriceVO.create(request.getPrice());
 
         product.update(request.getName(), price, request.getStockQuantity());
+        log.info("Product updated. productId={}, companyId={}, name={}, price={}, stockQuantity={}",
+                product.getId(), product.getCompany().getId(), product.getName(),
+                product.getPrice().getValue(), product.getStockQuantity());
     }
 
     @Transactional
@@ -63,6 +66,8 @@ public class ProductService {
                 .orElseThrow(() -> new BaseException(ProductErrorCode.PRODUCT_NOT_FOUND));
 
         product.softDelete(deletedBy);
+        log.info("Product deleted. productId={}, companyId={}, deletedBy={}",
+                product.getId(), product.getCompany().getId(), deletedBy);
     }
 
     @Transactional(readOnly = true)
