@@ -298,4 +298,46 @@ class UserServiceTest {
             when(keycloakClient.createUser(anyString(), anyString(), any())).thenReturn(new ResponseEntity<>(headers, HttpStatus.CREATED));
         }
     }
+    // ================= [ 유저 조회 및 허브 초기화 추가 테스트 ] ================= //
+
+    @Test
+    @DisplayName("유저 ID로 단건 조회 성공")
+    void getUserById_Success() {
+        // given
+        when(userRepository.findById(masterId)).thenReturn(Optional.of(masterUser));
+
+        // when
+        UserResponseDto result = userService.getUserById(masterId);
+
+        // then
+        assertEquals("마스터", result.getName());
+        verify(userRepository, times(1)).findById(masterId);
+    }
+
+    @Test
+    @DisplayName("Keycloak Sub로 단건 조회 성공")
+    void getUserBySub_Success() {
+        // given
+        when(userRepository.findByKeycloakSub(masterSub)).thenReturn(Optional.of(masterUser));
+
+        // when
+        UserResponseDto result = userService.getUserBySub(masterSub);
+
+        // then
+        assertEquals(masterId, result.getId());
+        verify(userRepository, times(1)).findByKeycloakSub(masterSub);
+    }
+
+    @Test
+    @DisplayName("허브 삭제 시 유저 허브 ID 일괄 초기화 성공")
+    void clearUserHubId_Success() {
+        // given
+        doNothing().when(userRepository).clearHubIdByHubId(testHubId);
+
+        // when
+        assertDoesNotThrow(() -> userService.clearUserHubId(testHubId));
+
+        // then
+        verify(userRepository, times(1)).clearHubIdByHubId(testHubId);
+    }
 }

@@ -231,4 +231,20 @@ class DeliveryManagerServiceTest {
         // 카프카 프로듀서가 1번 정상 호출되었는지 검증!
         verify(notificationProducer, times(1)).sendDeliveryAssignedEvent(any());
     }
+    // ================= [ 허브 삭제 시 일괄 초기화 테스트 ] ================= //
+
+    @Test
+    @DisplayName("허브 삭제 시 기사님 소속 허브 및 상태 일괄 초기화 성공")
+    void clearDeliveryManagerHubId_Success() {
+        // given
+        UUID targetHubId = UUID.randomUUID();
+        // Repository의 void 메서드 동작을 모킹 (doNothing이 기본값이지만 명시적으로 작성 가능)
+        doNothing().when(deliveryManagerRepository).clearHubIdAndChangeStatusByHubId(targetHubId, ManagerStatus.WAITING);
+
+        // when
+        assertDoesNotThrow(() -> deliveryManagerService.clearDeliveryManagerHubId(targetHubId));
+
+        // then
+        verify(deliveryManagerRepository, times(1)).clearHubIdAndChangeStatusByHubId(targetHubId, ManagerStatus.WAITING);
+    }
 }
