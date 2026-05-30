@@ -148,23 +148,21 @@ public class DeliveryManagerService {
         manager.recordAssignment();
         log.info("[DeliveryManagerAssign] 기사님 자동 배정 완료. ManagerId: {}, HubId: {}", manager.getId(), request.getHubId());
 
+        // 임시 코드 (효승님과 조율 후 수정하겠습니다)
         DeliveryAssignedEvent event = DeliveryAssignedEvent.builder()
                 .eventId(UUID.randomUUID().toString())
                 .eventType("DeliveryAssigned")
                 .occurredAt(java.time.ZonedDateTime.now().format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 .version("1")
-                .deliveryId(request.getDeliveryId())
-                .totalEstimatedDurationSeconds(request.getTotalEstimatedDurationSeconds())
-                .order(mapToEventOrder(request.getOrder()))
+                // TODO: 현재 배달 서비스가 값을 안 주고 있으므로 임시 방어 코드 적용
+                .deliveryId(request.getDeliveryId() != null ? request.getDeliveryId() : "임시-DELIVERY-ID")
+                .order(mapToEventOrder(request.getOrder())) // 매핑 메서드 내부에서 null 체크 필수
                 .route(mapToEventRoute(request.getRoute()))
                 .agent(DeliveryAssignedEvent.AgentInfo.builder()
                         .agentId(manager.getUserId().toString())
-                        // TODO: 이름과 근무시간은 임시 하드코딩. 나중에 User 서비스에서 가져오거나 DB에 추가 필요
                         .name("김배송")
                         .workingHours(DeliveryAssignedEvent.WorkingHours.builder()
-                                .start("09:00")
-                                .end("18:00")
-                                .build())
+                                .start("09:00").end("18:00").build())
                         .build())
                 .build();
 
