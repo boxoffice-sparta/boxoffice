@@ -123,7 +123,7 @@ class StockTransferServiceTest {
      * buildCandidates() 내부에서 호출되는 3개 의존성을 일괄 목킹한다.
      * available = toHub.capacity - existingStock
      */
-    private void givenCandidates(UUID fromHubId, Hub toHub, int existingStock) {
+    private void givenCandidates(UUID fromHubId, Hub toHub, long existingStock) {
         HubRoute route = buildRoute(fromHubId, toHub.getId(), BigDecimal.valueOf(400));
         given(hubRouteRepository.findAllByOriginHubId(fromHubId)).willReturn(List.of(route));
         given(hubRepository.findAllById(any(Collection.class))).willReturn(List.of(toHub));
