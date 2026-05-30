@@ -8,5 +8,5 @@ public record UserRejectedEvent(
         String eventId,
         String userName,
         String reason
-) {
+) implements UserEvent {
 }

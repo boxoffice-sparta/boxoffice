@@ -12,7 +12,7 @@ public record DeliveryAssignedEvent(
         Route route,
         long totalEstimatedDurationSeconds,
         Agent agent
-) {
+) implements DeliveryManagerEvent {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     // requestedDeadline은 ISO-8601 offset 포함 문자열(예: "2026-06-01T18:00:00+09:00").

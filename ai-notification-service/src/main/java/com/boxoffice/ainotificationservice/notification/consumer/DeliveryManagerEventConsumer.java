@@ -7,43 +7,36 @@ import com.boxoffice.ainotificationservice.ai.deadline.OrderLine;
 import com.boxoffice.ainotificationservice.ai.deadline.WorkingHours;
 import com.boxoffice.ainotificationservice.ai.service.DispatchDeadlinePredictor;
 import com.boxoffice.ainotificationservice.notification.consumer.event.DeliveryAssignedEvent;
+import com.boxoffice.ainotificationservice.notification.consumer.event.DeliveryManagerEvent;
 import com.boxoffice.ainotificationservice.notification.entity.message.EventCause;
 import com.boxoffice.ainotificationservice.notification.entity.message.Recipient;
 import com.boxoffice.ainotificationservice.notification.service.NotificationService;
 import com.boxoffice.ainotificationservice.notification.template.DispatchDeadlineNotificationContext;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 // delivery-manager.events 토픽 컨슈머. DeliveryAssigned 수신 → AI 발송 시한 예측 → 단일 채널 발송.
-@Slf4j
 @Component
 public class DeliveryManagerEventConsumer {
 
     private static final String GROUP = "ai-notification-service";
     private static final String SOURCE = "delivery-manager-service";
 
-    private final ObjectMapper objectMapper;
     private final IdempotentEventProcessor idempotentProcessor;
     private final NotificationService notificationService;
     private final DispatchDeadlinePredictor predictor;
     private final String channelId;
 
     public DeliveryManagerEventConsumer(
-            ObjectMapper objectMapper,
             IdempotentEventProcessor idempotentProcessor,
             NotificationService notificationService,
             DispatchDeadlinePredictor predictor,
             @Value("${notification.slack.channel-id}") String channelId) {
-        this.objectMapper = objectMapper;
         this.idempotentProcessor = idempotentProcessor;
         this.notificationService = notificationService;
         this.predictor = predictor;
@@ -51,12 +44,9 @@ public class DeliveryManagerEventConsumer {
     }
 
     @KafkaListener(topics = "delivery-manager.events", groupId = GROUP)
-    public void consume(String message) {
-        JsonNode node = readTree(message);
-        String eventType = node.path("eventType").asText();
-        switch (eventType) {
-            case "DeliveryAssigned" -> handleDeliveryAssigned(convert(node, DeliveryAssignedEvent.class));
-            default -> log.warn("처리 대상이 아닌 delivery-manager 이벤트 타입 - skip. eventType={}", eventType);
+    public void consume(DeliveryManagerEvent event) {
+        switch (event) {
+            case DeliveryAssignedEvent e -> handleDeliveryAssigned(e);
         }
     }
 
@@ -91,21 +81,5 @@ public class DeliveryManagerEventConsumer {
                 route,
                 Duration.ofSeconds(event.totalEstimatedDurationSeconds()),
                 workingHours);
-    }
-
-    private JsonNode readTree(String message) {
-        try {
-            return objectMapper.readTree(message);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("delivery-manager 이벤트 페이로드 파싱 실패", e);
-        }
-    }
-
-    private <T> T convert(JsonNode node, Class<T> type) {
-        try {
-            return objectMapper.treeToValue(node, type);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("delivery-manager 이벤트 역직렬화 실패: " + type.getSimpleName(), e);
-        }
     }
 }

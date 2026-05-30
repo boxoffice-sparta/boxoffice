@@ -7,5 +7,5 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record UserApprovedEvent(
         String eventId,
         String userName
-) {
+) implements UserEvent {
 }

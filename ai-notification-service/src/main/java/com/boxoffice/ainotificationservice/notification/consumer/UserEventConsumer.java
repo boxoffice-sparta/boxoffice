@@ -1,6 +1,7 @@
 package com.boxoffice.ainotificationservice.notification.consumer;
 
 import com.boxoffice.ainotificationservice.notification.consumer.event.UserApprovedEvent;
+import com.boxoffice.ainotificationservice.notification.consumer.event.UserEvent;
 import com.boxoffice.ainotificationservice.notification.consumer.event.UserRejectedEvent;
 import com.boxoffice.ainotificationservice.notification.consumer.event.UserSignupRequestedEvent;
 import com.boxoffice.ainotificationservice.notification.entity.message.EventCause;
@@ -10,79 +11,44 @@ import com.boxoffice.ainotificationservice.notification.template.MasterSignupReq
 import com.boxoffice.ainotificationservice.notification.template.TemplateContext;
 import com.boxoffice.ainotificationservice.notification.template.UserApprovedContext;
 import com.boxoffice.ainotificationservice.notification.template.UserRejectedContext;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-// user.events 토픽 컨슈머. eventType 분기 → 멱등 처리 → 단일 채널 발송.
-@Slf4j
+// user.events 토픽 컨슈머. eventType 다형성으로 구체 이벤트를 수신 → 멱등 처리 → 단일 채널 발송.
 @Component
 public class UserEventConsumer {
 
     private static final String GROUP = "ai-notification-service";
     private static final String SOURCE = "user-service";
 
-    private final ObjectMapper objectMapper;
     private final IdempotentEventProcessor idempotentProcessor;
     private final NotificationService notificationService;
     private final String channelId;
 
     public UserEventConsumer(
-            ObjectMapper objectMapper,
             IdempotentEventProcessor idempotentProcessor,
             NotificationService notificationService,
             @Value("${notification.slack.channel-id}") String channelId) {
-        this.objectMapper = objectMapper;
         this.idempotentProcessor = idempotentProcessor;
         this.notificationService = notificationService;
         this.channelId = channelId;
     }
 
     @KafkaListener(topics = "user.events", groupId = GROUP)
-    public void consume(String message) {
-        JsonNode node = readTree(message);
-        String eventType = node.path("eventType").asText();
-        switch (eventType) {
-            case "UserSignupRequested" -> {
-                UserSignupRequestedEvent event = convert(node, UserSignupRequestedEvent.class);
-                dispatch(event.eventId(),
-                        new MasterSignupRequestContext(event.applicantName(), event.email(), event.requestedRole()));
-            }
-            case "UserApproved" -> {
-                UserApprovedEvent event = convert(node, UserApprovedEvent.class);
-                dispatch(event.eventId(), new UserApprovedContext(event.userName()));
-            }
-            case "UserRejected" -> {
-                UserRejectedEvent event = convert(node, UserRejectedEvent.class);
-                dispatch(event.eventId(), new UserRejectedContext(event.userName(), event.reason()));
-            }
-            default -> log.warn("처리 대상이 아닌 user 이벤트 타입 - skip. eventType={}", eventType);
-        }
+    public void consume(UserEvent event) {
+        TemplateContext context = switch (event) {
+            case UserSignupRequestedEvent e ->
+                    new MasterSignupRequestContext(e.applicantName(), e.email(), e.requestedRole());
+            case UserApprovedEvent e -> new UserApprovedContext(e.userName());
+            case UserRejectedEvent e -> new UserRejectedContext(e.userName(), e.reason());
+        };
+        dispatch(event.eventId(), context);
     }
 
     private void dispatch(String eventId, TemplateContext context) {
         idempotentProcessor.processOnce(eventId, GROUP, () ->
                 notificationService.sendFromEvent(
                         eventId, Recipient.channel(channelId), context, new EventCause(eventId, SOURCE)));
-    }
-
-    private JsonNode readTree(String message) {
-        try {
-            return objectMapper.readTree(message);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("user 이벤트 페이로드 파싱 실패", e);
-        }
-    }
-
-    private <T> T convert(JsonNode node, Class<T> type) {
-        try {
-            return objectMapper.treeToValue(node, type);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("user 이벤트 역직렬화 실패: " + type.getSimpleName(), e);
-        }
     }
 }
