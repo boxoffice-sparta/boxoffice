@@ -19,6 +19,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -105,21 +106,21 @@ public class HubController {
         return ResponseEntity.ok(ApiResponse.success(hubService.deactivateHub(hubId)));
     }
 
-    private void validateMasterRole(String role) {
-        if (!"MASTER".equals(role)) {
-            throw new BaseException(CommonErrorCode.FORBIDDEN);
-        }
-    }
-
+    @Operation(summary = "허브 삭제",
+            description = "INACTIVE 상태의 허브를 삭제합니다. MASTER 권한 필요. CENTRAL 허브 및 소속 업체가 있는 허브는 삭제 불가.")
     @DeleteMapping("/{hubId}")
     public ResponseEntity<Void> deleteHub(
             @RequestHeader("X-User-Role") String role,
             @PathVariable UUID hubId
     ) {
+        validateMasterRole(role);
+        hubService.deleteHub(hubId);
+        return ResponseEntity.noContent().build();
+    }
+
+    private void validateMasterRole(String role) {
         if (!"MASTER".equals(role)) {
             throw new BaseException(CommonErrorCode.FORBIDDEN);
         }
-        hubService.deleteHub(hubId);
-        return ResponseEntity.noContent().build();
     }
 }
