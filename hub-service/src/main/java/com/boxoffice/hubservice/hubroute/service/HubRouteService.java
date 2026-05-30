@@ -45,6 +45,7 @@ public class HubRouteService {
     private final HubRepository hubRepository;
     private final AuditorAware<UUID> auditorAware;
 
+    @CacheEvict(cacheNames = "hub-routes", allEntries = true)
     @Transactional
     public HubRouteCreateResponseDto createHubRoute(HubRouteCreateRequestDto request) {
         if (request.originHubId().equals(request.destinationHubId())) {
