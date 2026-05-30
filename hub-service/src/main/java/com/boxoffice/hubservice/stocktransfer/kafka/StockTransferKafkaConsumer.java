@@ -34,6 +34,7 @@ public class StockTransferKafkaConsumer {
         StockTransfer transfer = stockTransferRepository.findById(event.transferId())
                 .orElseThrow(() -> new BaseException(HubErrorCode.TRANSFER_NOT_FOUND));
         transfer.revertDispatch();
-        log.warn("Stock transfer {} assignment failed, reverted to PENDING. Reason: {}", event.transferId(), event.reason());
+        log.warn("Stock transfer {} assignment failed, reverted to PENDING. Reason: {}",
+                event.transferId(), event.reason());
     }
 }
