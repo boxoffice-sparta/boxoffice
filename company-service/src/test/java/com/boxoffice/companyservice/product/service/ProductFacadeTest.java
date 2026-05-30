@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,6 +63,9 @@ class ProductFacadeTest {
 
     @Mock
     private HubValidator hubValidator;
+
+    @Mock
+    private AuditorAware<UUID> auditorAware;
 
     @Test
     @DisplayName("성공 - MASTER는 상품을 생성할 수 있다")
@@ -540,20 +545,21 @@ class ProductFacadeTest {
         UUID companyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
         String keycloakSub = UUID.randomUUID().toString();
-        UUID userId = UUID.randomUUID();
+        UUID auditorId = UUID.fromString(keycloakSub);
         Company company = createCompany(companyId, UUID.randomUUID());
 
         when(companyService.getCompanyEntity(companyId)).thenReturn(company);
-        when(userClient.getUserByKeycloakSub(keycloakSub)).thenReturn(createUserResponse(companyId, userId));
+        when(auditorAware.getCurrentAuditor()).thenReturn(Optional.of(auditorId));
 
         // when
         productFacade.deleteProduct(companyId, productId, "MASTER", null, keycloakSub);
 
         // then
         verify(companyService).getCompanyEntity(companyId);
-        verify(userClient).getUserByKeycloakSub(keycloakSub);
-        verify(productService).deleteProduct(companyId, productId, userId);
-        verifyNoMoreInteractions(userClient, companyService, productService);
+        verify(auditorAware).getCurrentAuditor();
+        verify(productService).deleteProduct(companyId, productId, auditorId);
+        verifyNoMoreInteractions(companyService, productService, auditorAware);
+        verifyNoInteractions(userClient);
         verifyNoInteractions(hubValidator);
     }
 
@@ -565,20 +571,21 @@ class ProductFacadeTest {
         UUID productId = UUID.randomUUID();
         UUID hubId = UUID.randomUUID();
         String keycloakSub = UUID.randomUUID().toString();
-        UUID userId = UUID.randomUUID();
+        UUID auditorId = UUID.fromString(keycloakSub);
         Company company = createCompany(companyId, hubId);
 
         when(companyService.getCompanyEntity(companyId)).thenReturn(company);
-        when(userClient.getUserByKeycloakSub(keycloakSub)).thenReturn(createUserResponse(companyId, userId));
+        when(auditorAware.getCurrentAuditor()).thenReturn(Optional.of(auditorId));
 
         // when
         productFacade.deleteProduct(companyId, productId, "HUB_MANAGER", hubId, keycloakSub);
 
         // then
         verify(companyService).getCompanyEntity(companyId);
-        verify(userClient).getUserByKeycloakSub(keycloakSub);
-        verify(productService).deleteProduct(companyId, productId, userId);
-        verifyNoMoreInteractions(userClient, companyService, productService);
+        verify(auditorAware).getCurrentAuditor();
+        verify(productService).deleteProduct(companyId, productId, auditorId);
+        verifyNoMoreInteractions(companyService, productService, auditorAware);
+        verifyNoInteractions(userClient);
         verifyNoInteractions(hubValidator);
     }
 

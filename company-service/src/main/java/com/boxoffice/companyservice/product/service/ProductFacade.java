@@ -16,6 +16,7 @@ import com.boxoffice.companyservice.product.dto.response.ProductResponseDto;
 import com.boxoffice.companyservice.product.dto.search.ProductSearchCondition;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class ProductFacade {
     private final CompanyService companyService;
     private final ProductService productService;
     private final HubValidator hubValidator;
+    private final AuditorAware<UUID> auditorAware;
 
     public ProductCreateResponseDto createProduct(
             UUID companyId,
@@ -97,7 +99,8 @@ public class ProductFacade {
         Company company = companyService.getCompanyEntity(companyId);
 
         validateProductDeleteScope(company, role, userHubId);
-        UUID deletedBy = resolveCurrentUserId(keycloakSub);
+        UUID deletedBy = auditorAware.getCurrentAuditor()
+                .orElseThrow(() -> new BaseException(CommonErrorCode.UNAUTHORIZED));
         productService.deleteProduct(companyId, productId, deletedBy);
     }
 
@@ -399,16 +402,4 @@ public class ProductFacade {
         }
     }
 
-    private UUID resolveCurrentUserId(String keycloakSub) {
-        try {
-            ApiResponse<UserResponseDto> response = userClient.getUserByKeycloakSub(keycloakSub);
-            if (response == null || response.getData() == null || response.getData().getId() == null) {
-                throw new BaseException(CommonErrorCode.UNAUTHORIZED);
-            }
-
-            return response.getData().getId();
-        } catch (FeignException e) {
-            throw new BaseException(CommonErrorCode.FEIGN_CLIENT_ERROR);
-        }
-    }
 }
