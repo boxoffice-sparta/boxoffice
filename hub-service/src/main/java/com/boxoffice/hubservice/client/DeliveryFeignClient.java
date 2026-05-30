@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name = "delivery-service")
+@FeignClient(name = "delivery-service", fallbackFactory = DeliveryFeignClientFallbackFactory.class)
 public interface DeliveryFeignClient {
 
     @GetMapping("/internal/v1/deliveries/active-count")
