@@ -27,6 +27,9 @@ dependencies {
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // Eureka
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 

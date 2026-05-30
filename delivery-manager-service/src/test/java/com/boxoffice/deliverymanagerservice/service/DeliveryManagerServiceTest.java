@@ -137,7 +137,7 @@ class DeliveryManagerServiceTest {
                 .build());
 
         // 바뀐 Repository 메서드 이름과 ManagerStatus.WAITING 파라미터를 정확히 모킹
-        when(deliveryManagerRepository.findFirstByHubIdAndTypeAndStatusAndIsDeletedFalseOrderByLastAssignedAtAsc(
+        when(deliveryManagerRepository.findFirstByHubIdAndTypeAndStatusAndDeletedAtIsNullOrderByLastAssignedAtAsc(
                 hubId, DeliveryType.HUB_TO_HUB, ManagerStatus.WAITING))
                 .thenReturn(Optional.of(manager));
 

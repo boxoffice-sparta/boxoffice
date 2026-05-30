@@ -2,7 +2,12 @@ package com.boxoffice.hubservice.hub.entity;
 
 import com.boxoffice.common.entity.AddressVO;
 import com.boxoffice.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -49,10 +54,19 @@ public class Hub extends BaseEntity {
         this.capacity = capacity;
     }
 
-    public void update(String name, AddressVO address, CoordinateVO coordinate) {
-        if (name != null) this.name = name;
-        if (address != null) this.address = address;
-        if (coordinate != null) this.coordinate = coordinate;
+    public void update(String name, AddressVO address, CoordinateVO coordinate, Integer capacity) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (address != null) {
+            this.address = address;
+        }
+        if (coordinate != null) {
+            this.coordinate = coordinate;
+        }
+        if (capacity != null) {
+            this.capacity = capacity;
+        }
     }
 
     public void assignManager(UUID managerId) {
@@ -66,6 +80,10 @@ public class Hub extends BaseEntity {
 
     public boolean isClosing() {
         return this.hubType == HubType.CLOSING;
+    }
+
+    public boolean isActive() {
+        return this.hubType == HubType.CENTRAL || this.hubType == HubType.REGIONAL;
     }
 
     // p_hub_routes는 여기서 삭제하지 않음. 진행 중 배송 완료 후 DELETE 2단계에서 처리

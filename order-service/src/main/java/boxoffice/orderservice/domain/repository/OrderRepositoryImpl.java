@@ -7,11 +7,14 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
 
+@Repository
 @RequiredArgsConstructor
 public class OrderRepositoryImpl implements OrderRepositoryCustom {
 
@@ -57,5 +60,18 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
         }
 
         return builder;
+    }
+
+    @Override
+    public Optional<Order> findByIdWithProducts(UUID orderId) {
+        QOrder order = QOrder.order;
+
+        Order result = queryFactory
+            .selectFrom(order)
+            .leftJoin(order.orderProducts).fetchJoin()
+            .where(order.id.eq(orderId))
+            .fetchOne();
+
+        return Optional.ofNullable(result);
     }
 }

@@ -2,7 +2,13 @@ package boxoffice.deliveryservice.domain.deliveryroute.entity;
 
 import boxoffice.deliveryservice.domain.delivery.entity.Delivery;
 import com.boxoffice.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -47,4 +53,13 @@ public class DeliveryRoute extends BaseEntity {
     private BigDecimal actualDistance;
     private Integer actualDuration;
     private Integer sequence;
+
+    public void updateActual(BigDecimal actualDistance, Integer actualDuration) {
+        this.actualDistance = actualDistance;
+        this.actualDuration = actualDuration;
+    }
+
+    public void updateStatus(DeliveryRouteStatus status) {
+        this.status = status;
+    }
 }

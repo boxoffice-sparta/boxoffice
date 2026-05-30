@@ -45,4 +45,17 @@ public class Company extends BaseEntity {
     public static Company create(String name, CompanyType type, UUID hubId, AddressVO address) {
         return new Company(name, type, hubId, address);
     }
+
+    public void update(String name, CompanyType type, AddressVO address) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (type != null) {
+            this.type = type;
+        }
+        if (address != null) {
+            this.address = address;
+        }
+    }
+
 }
