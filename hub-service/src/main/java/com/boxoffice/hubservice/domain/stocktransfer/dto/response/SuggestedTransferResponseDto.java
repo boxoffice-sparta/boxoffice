@@ -1,0 +1,14 @@
+package com.boxoffice.hubservice.domain.stocktransfer.dto.response;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+public record SuggestedTransferResponseDto(
+        UUID toHubId,
+        String toHubName,
+        BigDecimal distanceKm,
+        long availableCapacity,
+        long suggestedCount,
+        List<AssignedCompanyResponseDto> companies
+) { }
