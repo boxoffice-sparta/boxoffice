@@ -8,7 +8,7 @@ public record SuggestedTransferResponseDto(
         UUID toHubId,
         String toHubName,
         BigDecimal distanceKm,
-        Integer availableCapacity,
-        Integer suggestedCount,
+        long availableCapacity,
+        long suggestedCount,
         List<AssignedCompanyResponseDto> companies
 ) { }
