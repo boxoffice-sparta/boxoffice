@@ -5,7 +5,11 @@ import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.common.response.ApiResponse;
 import com.boxoffice.common.response.PageResponse;
 import com.boxoffice.common.util.PageableUtils;
-import com.boxoffice.hubservice.client.*;
+import com.boxoffice.hubservice.client.BulkHubTransferRequestDto;
+import com.boxoffice.hubservice.client.BulkStockCountRequestDto;
+import com.boxoffice.hubservice.client.BulkStockCountResponseDto;
+import com.boxoffice.hubservice.client.CompanyDetailResponseDto;
+import com.boxoffice.hubservice.client.CompanyFeignClient;
 import com.boxoffice.hubservice.exception.HubErrorCode;
 import com.boxoffice.hubservice.hub.entity.Hub;
 import com.boxoffice.hubservice.hub.repository.HubRepository;
@@ -20,17 +24,24 @@ import com.boxoffice.hubservice.stocktransfer.dto.response.TransferPlanResponseD
 import com.boxoffice.hubservice.stocktransfer.entity.QStockTransfer;
 import com.boxoffice.hubservice.stocktransfer.entity.StockTransfer;
 import com.boxoffice.hubservice.stocktransfer.entity.TransferStatus;
-import com.boxoffice.hubservice.stocktransfer.kafka.StockTransferKafkaProducer;
+import com.boxoffice.hubservice.stocktransfer.event.TransferDispatchedEvent;
 import com.boxoffice.hubservice.stocktransfer.repository.StockTransferRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,10 +52,10 @@ public class StockTransferService {
     private final StockTransferRepository stockTransferRepository;
     private final HubRepository hubRepository;
     private final HubRouteRepository hubRouteRepository;
-    private final ProductFeignClient productFeignClient;
-    private final StockTransferKafkaProducer kafkaProducer;
+    private final CompanyFeignClient companyFeignClient;
+    private final ApplicationEventPublisher eventPublisher;
 
-    private record Candidate(Hub hub, BigDecimal distanceKm, int availableCapacity) {
+    private record Candidate(Hub hub, BigDecimal distanceKm, long availableCapacity) {
     }
 
     public TransferPlanResponseDto getTransferPlan(UUID fromHubId) {
@@ -70,7 +81,8 @@ public class StockTransferService {
                     List<CompanyDetailResponseDto> assigned = assignment.get(c.hub().getId());
                     int suggestedCount = assigned.stream().mapToInt(CompanyDetailResponseDto::stockCount).sum();
                     List<AssignedCompanyResponseDto> companyDtos = assigned.stream()
-                            .map(co -> new AssignedCompanyResponseDto(co.companyId(), co.companyName(), co.stockCount()))
+                            .map(co -> new AssignedCompanyResponseDto(
+                                    co.companyId(), co.companyName(), co.stockCount()))
                             .toList();
                     return new SuggestedTransferResponseDto(
                             c.hub().getId(), c.hub().getName(),
@@ -133,9 +145,15 @@ public class StockTransferService {
         Pageable pageable = PageableUtils.ofDefault(page, size);
         QStockTransfer q = QStockTransfer.stockTransfer;
         BooleanBuilder builder = new BooleanBuilder();
-        if (status != null) builder.and(q.status.eq(status));
-        if (fromHubId != null) builder.and(q.fromHubId.eq(fromHubId));
-        if (toHubId != null) builder.and(q.toHubId.eq(toHubId));
+        if (status != null) {
+            builder.and(q.status.eq(status));
+        }
+        if (fromHubId != null) {
+            builder.and(q.fromHubId.eq(fromHubId));
+        }
+        if (toHubId != null) {
+            builder.and(q.toHubId.eq(toHubId));
+        }
         Page<StockTransferResponseDto> result = stockTransferRepository.findAll(builder, pageable)
                 .map(StockTransferResponseDto::from);
         return PageResponse.of(result);
@@ -147,7 +165,9 @@ public class StockTransferService {
         QStockTransfer q = QStockTransfer.stockTransfer;
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(q.fromHubId.eq(hubId).or(q.toHubId.eq(hubId)));
-        if (status != null) builder.and(q.status.eq(status));
+        if (status != null) {
+            builder.and(q.status.eq(status));
+        }
         Page<StockTransferResponseDto> result = stockTransferRepository.findAll(builder, pageable)
                 .map(StockTransferResponseDto::from);
         return PageResponse.of(result);
@@ -159,7 +179,9 @@ public class StockTransferService {
         QStockTransfer q = QStockTransfer.stockTransfer;
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(q.deliveryManagerId.eq(deliveryManagerId));
-        if (status != null) builder.and(q.status.eq(status));
+        if (status != null) {
+            builder.and(q.status.eq(status));
+        }
         Page<StockTransferResponseDto> result = stockTransferRepository.findAll(builder, pageable)
                 .map(StockTransferResponseDto::from);
         return PageResponse.of(result);
@@ -179,7 +201,8 @@ public class StockTransferService {
             throw new BaseException(HubErrorCode.TRANSFER_ALREADY_IN_PROGRESS);
         }
         transfer.dispatch();
-        kafkaProducer.sendDispatched(transferId, transfer.getFromHubId(), transfer.getToHubId());
+        eventPublisher.publishEvent(
+                new TransferDispatchedEvent(transferId, transfer.getFromHubId(), transfer.getToHubId()));
         return StockTransferResponseDto.from(transfer);
     }
 
@@ -217,7 +240,7 @@ public class StockTransferService {
             throw new BaseException(HubErrorCode.TRANSFER_INVALID_STATUS);
         }
         transfer.complete(request != null ? request.note() : null);
-        productFeignClient.bulkHubTransfer(
+        companyFeignClient.bulkHubTransfer(
                 new BulkHubTransferRequestDto(transfer.getCompanyIds(), transfer.getToHubId()));
     }
 
@@ -251,23 +274,29 @@ public class StockTransferService {
         Map<UUID, Hub> hubMap = hubRepository.findAllById(destinationIds)
                 .stream().collect(Collectors.toMap(Hub::getId, h -> h));
 
-        Map<UUID, Integer> stockCounts = fetchBulkStockCount(destinationIds);
+        Map<UUID, Long> stockCounts = fetchBulkStockCount(destinationIds);
 
         return routes.stream()
                 .map(route -> {
                     Hub toHub = hubMap.get(route.getDestinationHubId());
-                    if (toHub == null || toHub.isInactive() || toHub.isClosing() || toHub.getCapacity() == null)
+                    if (toHub == null || toHub.isInactive() || toHub.isClosing() || toHub.getCapacity() == null) {
                         return null;
-                    int available = toHub.getCapacity() - stockCounts.getOrDefault(toHub.getId(), 0);
-                    if (available <= 0) return null;
+                    }
+                    long available = (long) toHub.getCapacity() - stockCounts.getOrDefault(toHub.getId(), 0L);
+                    if (available <= 0) {
+                        return null;
+                    }
                     return new Candidate(toHub, route.getEstimatedDistanceKm(), available);
                 })
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(Candidate::distanceKm))
+                .sorted(Comparator.comparingDouble(c ->
+                        -(c.availableCapacity() / c.distanceKm().doubleValue())))
                 .toList();
     }
 
-    private Map<UUID, List<CompanyDetailResponseDto>> runFFD(List<CompanyDetailResponseDto> companies, List<Candidate> candidates) {
+    // First Fit Decreasing: 재고 많은 회사부터 가용용량/거리 효율이 높은 허브에 순서대로 배정 (bin packing 근사 최적화)
+    private Map<UUID, List<CompanyDetailResponseDto>> runFFD(
+            List<CompanyDetailResponseDto> companies, List<Candidate> candidates) {
         if (candidates.isEmpty()) {
             throw new BaseException(HubErrorCode.TRANSFER_EXCEEDS_CAPACITY);
         }
@@ -276,7 +305,7 @@ public class StockTransferService {
                 .sorted(Comparator.comparingInt(CompanyDetailResponseDto::stockCount).reversed())
                 .toList();
 
-        Map<UUID, Integer> remaining = candidates.stream()
+        Map<UUID, Long> remaining = candidates.stream()
                 .collect(Collectors.toMap(c -> c.hub().getId(), Candidate::availableCapacity));
 
         Map<UUID, List<CompanyDetailResponseDto>> assignment = new LinkedHashMap<>();
@@ -286,7 +315,7 @@ public class StockTransferService {
             boolean assigned = false;
             for (Candidate candidate : candidates) {
                 UUID hubId = candidate.hub().getId();
-                int cap = remaining.getOrDefault(hubId, 0);
+                long cap = remaining.getOrDefault(hubId, 0L);
                 if (company.stockCount() <= cap) {
                     assignment.get(hubId).add(company);
                     remaining.put(hubId, cap - company.stockCount());
@@ -304,16 +333,22 @@ public class StockTransferService {
     }
 
     private List<CompanyDetailResponseDto> fetchCompanies(UUID hubId) {
-        ApiResponse<List<CompanyDetailResponseDto>> response = productFeignClient.getCompaniesByHubId(hubId);
-        if (response == null || response.getData() == null) return List.of();
+        ApiResponse<List<CompanyDetailResponseDto>> response = companyFeignClient.getCompaniesByHubId(hubId);
+        if (response == null || response.getData() == null) {
+            return List.of();
+        }
         return response.getData();
     }
 
-    private Map<UUID, Integer> fetchBulkStockCount(List<UUID> hubIds) {
-        if (hubIds.isEmpty()) return Map.of();
+    private Map<UUID, Long> fetchBulkStockCount(List<UUID> hubIds) {
+        if (hubIds.isEmpty()) {
+            return Map.of();
+        }
         ApiResponse<List<BulkStockCountResponseDto>> response =
-                productFeignClient.getBulkStockCount(new BulkStockCountRequestDto(hubIds));
-        if (response == null || response.getData() == null) return Map.of();
+                companyFeignClient.getBulkStockCount(new BulkStockCountRequestDto(hubIds));
+        if (response == null || response.getData() == null) {
+            return Map.of();
+        }
         return response.getData().stream()
                 .collect(Collectors.toMap(BulkStockCountResponseDto::hubId, BulkStockCountResponseDto::stockCount));
     }

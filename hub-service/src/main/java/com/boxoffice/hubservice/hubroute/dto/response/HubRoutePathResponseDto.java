@@ -1,5 +1,7 @@
 package com.boxoffice.hubservice.hubroute.dto.response;
 
+import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.hubservice.hub.entity.Hub;
 import com.boxoffice.hubservice.hub.entity.HubType;
 import com.boxoffice.hubservice.hubroute.entity.HubRoute;
@@ -23,11 +25,14 @@ public record HubRoutePathResponseDto(
             HubInfo destinationHub,
             int estimatedDurationMin,
             BigDecimal estimatedDistanceKm
-    ) {}
+    ) { }
 
-    public record HubInfo(UUID hubId, String name, HubType hubType) {}
+    public record HubInfo(UUID hubId, String name, HubType hubType) { }
 
     public static HubRoutePathResponseDto of(List<HubRoute> routes, Map<UUID, Hub> hubMap) {
+        if (routes == null || routes.isEmpty()) {
+            throw new BaseException(CommonErrorCode.INVALID_INPUT);
+        }
         AtomicInteger seq = new AtomicInteger(1);
         List<HubRouteSegmentDto> segments = routes.stream()
                 .map(r -> {

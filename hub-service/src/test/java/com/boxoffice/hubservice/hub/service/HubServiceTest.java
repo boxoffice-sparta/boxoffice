@@ -9,6 +9,7 @@ import com.boxoffice.hubservice.exception.HubErrorCode;
 import com.boxoffice.hubservice.hub.dto.request.HubClosingRequestDto;
 import com.boxoffice.hubservice.hub.dto.request.HubCreateRequestDto;
 import com.boxoffice.hubservice.hub.dto.request.HubUpdateRequestDto;
+import com.boxoffice.hubservice.hub.dto.response.HubActiveResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubCreateResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubDeactivateResponseDto;
 import com.boxoffice.hubservice.hub.dto.response.HubGetResponseDto;
@@ -107,6 +108,7 @@ class HubServiceTest {
         assertThat(response.name()).isEqualTo("서울특별시 센터");
         assertThat(response.hubType()).isEqualTo(HubType.REGIONAL);
         assertThat(response.latitude()).isEqualTo(37.4956);
+        assertThat(response.createdBy()).isNull();
         verify(hubRepository).save(any(Hub.class));
     }
 
@@ -300,7 +302,7 @@ class HubServiceTest {
         // given
         Hub hub = buildHub("서울 센터", HubType.REGIONAL);
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
-        HubUpdateRequestDto request = new HubUpdateRequestDto("서울특별시 센터", null, null, null, null, null);
+        HubUpdateRequestDto request = new HubUpdateRequestDto("서울특별시 센터", null, null, null, null, null, null);
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
         given(hubRepository.existsByNameAndIdNot(request.name(), hubId)).willReturn(false);
@@ -317,7 +319,7 @@ class HubServiceTest {
     void updateHub_notFound_throwsException() {
         // given
         UUID hubId = UUID.randomUUID();
-        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null);
+        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null, null);
 
         given(hubRepository.findById(hubId)).willReturn(Optional.empty());
 
@@ -336,7 +338,7 @@ class HubServiceTest {
         hub.startClosing("마감");
         hub.deactivate();
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
-        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null);
+        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null, null);
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
 
@@ -354,7 +356,7 @@ class HubServiceTest {
         Hub hub = buildHub("서울 센터", HubType.REGIONAL);
         hub.startClosing("마감 예정");
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
-        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null);
+        HubUpdateRequestDto request = new HubUpdateRequestDto("새 이름", null, null, null, null, null, null);
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
 
@@ -371,7 +373,7 @@ class HubServiceTest {
         // given
         Hub hub = buildHub("서울 센터", HubType.REGIONAL);
         UUID hubId = (UUID) ReflectionTestUtils.getField(hub, "id");
-        HubUpdateRequestDto request = new HubUpdateRequestDto("부산 센터", null, null, null, null, null);
+        HubUpdateRequestDto request = new HubUpdateRequestDto("부산 센터", null, null, null, null, null, null);
 
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
         given(hubRepository.existsByNameAndIdNot(request.name(), hubId)).willReturn(true);
@@ -566,11 +568,11 @@ class HubServiceTest {
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
 
         // when
-        HubGetResponseDto response = hubService.getActiveHub(hubId);
+        HubActiveResponseDto response = hubService.getActiveHub(hubId);
 
         // then
         assertThat(response.hubId()).isEqualTo(hubId);
-        assertThat(response.hubType()).isEqualTo(HubType.CENTRAL);
+        assertThat(response.isActive()).isTrue();
     }
 
     @Test
@@ -582,11 +584,11 @@ class HubServiceTest {
         given(hubRepository.findById(hubId)).willReturn(Optional.of(hub));
 
         // when
-        HubGetResponseDto response = hubService.getActiveHub(hubId);
+        HubActiveResponseDto response = hubService.getActiveHub(hubId);
 
         // then
         assertThat(response.hubId()).isEqualTo(hubId);
-        assertThat(response.hubType()).isEqualTo(HubType.REGIONAL);
+        assertThat(response.isActive()).isTrue();
     }
 
     @Test
