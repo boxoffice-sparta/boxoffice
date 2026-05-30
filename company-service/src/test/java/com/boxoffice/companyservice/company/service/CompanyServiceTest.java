@@ -350,21 +350,75 @@ class CompanyServiceTest {
     }
 
     @Test
-    @DisplayName("성공 - 업체들의 소속 허브를 일괄 변경한다")
+    @DisplayName("성공 - 업체들의 소속 허브를 일괄 변경한다 (중복 ID 제거 확인)")
     void transferCompaniesHubUpdatesCompanyHubId() {
         // given
         UUID toHubId = UUID.randomUUID();
         UUID firstCompanyId = UUID.randomUUID();
         UUID secondCompanyId = UUID.randomUUID();
+        // 중복된 ID를 포함한 요청
+        List<UUID> requestIds = List.of(firstCompanyId, secondCompanyId, firstCompanyId);
 
-        when(companyRepository.bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId)).thenReturn(2L);
+        // 중복 제거 후 2개만 업데이트 성공한 상황
+        when(companyRepository.bulkUpdateHubId(any(), eq(toHubId))).thenReturn(2L);
 
         // when
-        companyService.transferCompaniesHub(List.of(firstCompanyId, secondCompanyId), toHubId);
+        companyService.transferCompaniesHub(requestIds, toHubId);
 
         // then
-        verify(companyRepository).bulkUpdateHubId(List.of(firstCompanyId, secondCompanyId), toHubId);
+        ArgumentCaptor<List<UUID>> idListCaptor = ArgumentCaptor.forClass(List.class);
+        verify(companyRepository).bulkUpdateHubId(idListCaptor.capture(), eq(toHubId));
         verifyNoMoreInteractions(companyRepository);
+        
+        assertThat(idListCaptor.getValue()).hasSize(2).containsOnly(firstCompanyId, secondCompanyId);
+    }
+
+    @Test
+    @DisplayName("실패 - 벌크 허브 변경 시 업체 ID 목록이 null이면 예외를 반환한다")
+    void transferCompaniesHubWithNullCompanyIdsThrowsInvalidInput() {
+        // given
+        UUID toHubId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() ->
+                companyService.transferCompaniesHub(null, toHubId)
+        );
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 벌크 허브 변경 시 업체 ID 목록이 비어있으면 예외를 반환한다")
+    void transferCompaniesHubWithEmptyCompanyIdsThrowsInvalidInput() {
+        // given
+        UUID toHubId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() ->
+                companyService.transferCompaniesHub(List.of(), toHubId)
+        );
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(companyRepository);
+    }
+
+    @Test
+    @DisplayName("실패 - 벌크 허브 변경 시 목적지 허브 ID가 null이면 예외를 반환한다")
+    void transferCompaniesHubWithNullToHubIdThrowsInvalidInput() {
+        // given
+        List<UUID> companyIds = List.of(UUID.randomUUID());
+
+        // when
+        Throwable throwable = catchThrowable(() ->
+                companyService.transferCompaniesHub(companyIds, null)
+        );
+
+        // then
+        assertInvalidInput(throwable);
+        verifyNoInteractions(companyRepository);
     }
 
     @Test
@@ -453,5 +507,11 @@ class CompanyServiceTest {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException("CompanyUpdateRequestDto 테스트 객체를 생성할 수 없습니다.", e);
         }
+    }
+
+    private void assertInvalidInput(Throwable throwable) {
+        assertThat(throwable)
+                .isInstanceOfSatisfying(BaseException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
 }

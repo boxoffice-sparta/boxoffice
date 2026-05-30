@@ -98,7 +98,11 @@ public class CompanyService {
 
     @Transactional
     public void transferCompaniesHub(List<UUID> companyIds, UUID toHubId) {
-        List<UUID> distinctCompanyIds = new LinkedHashSet<>(companyIds).stream().toList();
+        if (companyIds == null || companyIds.isEmpty() || toHubId == null) {
+            throw new BaseException(CommonErrorCode.INVALID_INPUT);
+        }
+
+        List<UUID> distinctCompanyIds = new java.util.LinkedHashSet<>(companyIds).stream().toList();
         long updatedCount = companyRepository.bulkUpdateHubId(distinctCompanyIds, toHubId);
 
         if (updatedCount != distinctCompanyIds.size()) {
