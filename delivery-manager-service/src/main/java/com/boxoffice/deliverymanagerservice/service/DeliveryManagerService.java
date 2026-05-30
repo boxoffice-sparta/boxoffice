@@ -1,6 +1,7 @@
 package com.boxoffice.deliverymanagerservice.service;
 
 import com.boxoffice.common.exception.BaseException;
+import com.boxoffice.deliverymanagerservice.client.HubClient;
 import com.boxoffice.deliverymanagerservice.dto.*;
 import com.boxoffice.deliverymanagerservice.entity.DeliveryManager;
 import com.boxoffice.deliverymanagerservice.entity.ManagerStatus;
@@ -19,10 +20,16 @@ import java.util.UUID;
 public class DeliveryManagerService {
 
     private final DeliveryManagerRepository deliveryManagerRepository;
+    private final HubClient hubClient;
 
     @Transactional
     public DeliveryManagerResponseDto createDeliveryManager(DeliveryManagerCreateRequestDto request, String role) {
         checkAdminRole(role);
+
+        boolean isHubActive = hubClient.checkHubActive(request.getHubId());
+        if (!isHubActive) {
+            throw new BaseException(DeliveryManagerErrorCode.HUB_IS_NOT_ACTIVE);
+        }
 
         if (deliveryManagerRepository.findByUserId(request.getUserId()).isPresent()) {
             log.warn("[DeliveryManagerCreate] 중복 등록 시도. UserId: {}", request.getUserId());
@@ -63,7 +70,14 @@ public class DeliveryManagerService {
         DeliveryManager manager = deliveryManagerRepository.findById(managerId)
                 .orElseThrow(() -> new BaseException(DeliveryManagerErrorCode.DELIVERY_MANAGER_NOT_FOUND));
 
-        if (request.getHubId() != null) manager.updateHub(request.getHubId());
+        if (request.getHubId() != null) {
+            boolean isHubActive = hubClient.checkHubActive(request.getHubId());
+            if (!isHubActive) {
+                throw new BaseException(DeliveryManagerErrorCode.HUB_IS_NOT_ACTIVE);
+            }
+            manager.updateHub(request.getHubId());
+        }
+
         if (request.getType() != null) manager.updateType(request.getType());
 
         return DeliveryManagerResponseDto.from(manager);
