@@ -153,12 +153,12 @@ public class ProductService {
         }
 
         if (isStockOperationDone(orderId, ProductStockOperationType.RESTORE)) {
-            log.info("Stock operation already done. orderId={}, operationType={}", orderId, ProductStockOperationType.RESTORE);
+            log.info("Stock operation already done before lock. orderId={}, operationType={}", orderId, ProductStockOperationType.RESTORE);
             return;
         }
         acquireStockOperationLock(orderId, ProductStockOperationType.RESTORE);
         if (isStockOperationDone(orderId, ProductStockOperationType.RESTORE)) {
-            log.info("Stock operation already done. orderId={}, operationType={}", orderId, ProductStockOperationType.RESTORE);
+            log.info("Stock operation already done after lock. orderId={}, operationType={}", orderId, ProductStockOperationType.RESTORE);
             return;
         }
 

@@ -4,6 +4,7 @@ import com.boxoffice.common.exception.BaseException;
 import com.boxoffice.common.exception.CommonErrorCode;
 import com.boxoffice.companyservice.company.entity.Company;
 import com.boxoffice.companyservice.company.entity.CompanyType;
+import com.boxoffice.companyservice.company.repository.CompanyRepository;
 import com.boxoffice.companyservice.company.service.CompanyService;
 import com.boxoffice.companyservice.product.domain.PriceVO;
 import com.boxoffice.companyservice.product.dto.request.ProductCreateRequestDto;
@@ -56,6 +57,9 @@ class ProductServiceTest {
     private ProductService productService;
 
     @Mock
+    private CompanyRepository companyRepository;
+
+    @Mock
     private ProductRepository productRepository;
 
     @Mock
@@ -76,6 +80,7 @@ class ProductServiceTest {
         Company company = createCompany(companyId);
         ProductCreateRequestDto request = createRequest(" 테스트 상품 ", 10000, 50);
 
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
             ReflectionTestUtils.setField(product, "id", productId);
@@ -83,12 +88,13 @@ class ProductServiceTest {
         });
 
         // when
-        ProductCreateResponseDto response = productService.createProduct(company, request);
+        ProductCreateResponseDto response = productService.createProduct(companyId, request);
 
         // then
         ArgumentCaptor<Product> productCaptor = ArgumentCaptor.forClass(Product.class);
+        verify(companyRepository).findById(companyId);
         verify(productRepository).save(productCaptor.capture());
-        verifyNoMoreInteractions(productRepository);
+        verifyNoMoreInteractions(companyRepository, productRepository);
 
         Product savedProduct = productCaptor.getValue();
         assertThat(savedProduct.getName()).isEqualTo("테스트 상품");
