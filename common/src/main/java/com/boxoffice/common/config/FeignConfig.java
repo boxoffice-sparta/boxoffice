@@ -1,0 +1,34 @@
+package com.boxoffice.common.config;
+
+import feign.Logger;
+import feign.RequestInterceptor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+@Configuration
+public class FeignConfig {
+
+    @Bean
+    public RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+            ServletRequestAttributes attrs =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                String userId   = attrs.getRequest().getHeader("X-User-Id");
+                String username = attrs.getRequest().getHeader("X-User-Username");
+                String userRole = attrs.getRequest().getHeader("X-User-Role");
+
+                if (userId != null)   requestTemplate.header("X-User-Id", userId);
+                if (username != null) requestTemplate.header("X-User-Username", username);
+                if (userRole != null) requestTemplate.header("X-User-Role", userRole);
+            }
+        };
+    }
+
+    @Bean
+    Logger.Level feignLoggerLevel() {
+        return Logger.Level.FULL;
+    }
+}
