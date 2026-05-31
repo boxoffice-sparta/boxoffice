@@ -92,4 +92,33 @@ class DeliveryManagerEventConsumerTest {
                 eq(new DispatchDeadlineNotificationContext("김배송", "ORD-1234", deadline, "납기 역산 결과")),
                 eq(new EventCause("evt-da-1", "delivery-manager-service")));
     }
+
+    @Test
+    @DisplayName("DeliveryAssigned - 상세 정보가 비어있으면 더미로 채워 발송한다 (계약 합의 전 임시)")
+    void delivery_assigned_without_detail_uses_dummy() {
+        // given - order/route/agent 누락(thin) 이벤트
+        given(processedEventRepository.existsByEventIdAndConsumerGroup(any(), any())).willReturn(false);
+        LocalDateTime deadline = LocalDateTime.of(2026, 6, 1, 14, 30);
+        given(predictor.predict(any()))
+                .willReturn(DispatchDeadlinePrediction.llm(deadline, "더미 기반 예측", 0.5));
+        DeliveryAssignedEvent thin = new DeliveryAssignedEvent("evt-thin", null, null, 0L, null);
+
+        // when
+        consumer.consume(thin);
+
+        // then - 더미 입력으로 예측이 호출됨
+        ArgumentCaptor<DispatchDeadlineContext> captor = ArgumentCaptor.forClass(DispatchDeadlineContext.class);
+        then(predictor).should().predict(captor.capture());
+        DispatchDeadlineContext input = captor.getValue();
+        assertThat(input.products()).isNotEmpty();
+        assertThat(input.route().destination()).isNotBlank();
+        assertThat(input.agentWorkingHours()).isNotNull();
+
+        // then - 더미 이름/주문번호로 발송됨
+        then(notificationService).should().sendFromEvent(
+                eq("evt-thin"),
+                eq(Recipient.channel(CHANNEL)),
+                eq(new DispatchDeadlineNotificationContext("데모담당자", "DEMO-ORDER", deadline, "더미 기반 예측")),
+                eq(new EventCause("evt-thin", "delivery-manager-service")));
+    }
 }

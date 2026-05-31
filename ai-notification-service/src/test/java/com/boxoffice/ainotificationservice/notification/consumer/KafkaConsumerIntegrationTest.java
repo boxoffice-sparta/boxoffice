@@ -35,7 +35,6 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
                 + "org.springframework.ai.model.google.genai.autoconfigure.chat.GoogleGenAiChatAutoConfiguration,"
                 + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
                 + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration",
-        "notification.slack.channel-id=C-IT",
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
         "spring.kafka.consumer.auto-offset-reset=earliest"
 })
@@ -55,6 +54,7 @@ class KafkaConsumerIntegrationTest {
     @Autowired
     private ProcessedEventRepository processedEventRepository;
 
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Autowired
     private EmbeddedKafkaBroker broker;
 
@@ -109,6 +109,21 @@ class KafkaConsumerIntegrationTest {
             // 예측(FakeLlm)→템플릿 렌더→발송까지 완주 검증
             assertThat(message.get().getStatus()).isEqualTo(NotificationStatus.SENT);
             assertThat(processedEventRepository.existsByEventIdAndConsumerGroup("it-da", GROUP)).isTrue();
+        });
+    }
+
+    @Test
+    @DisplayName("delivery-manager.events / 상세 없는 이벤트 → 더미로 채워 발송 완주 (임시)")
+    void consume_delivery_assigned_thin() {
+        kafkaTemplate.send("delivery-manager.events",
+                "{\"eventType\":\"DeliveryAssigned\",\"eventId\":\"it-da-thin\"}");
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            Optional<SlackMessage> message = slackMessageRepository.findByIdempotencyKey("it-da-thin");
+            assertThat(message).isPresent();
+            // order/route/agent 누락 → withDummyDefaults가 채워 예측→발송까지 완주
+            assertThat(message.get().getStatus()).isEqualTo(NotificationStatus.SENT);
+            assertThat(processedEventRepository.existsByEventIdAndConsumerGroup("it-da-thin", GROUP)).isTrue();
         });
     }
 
