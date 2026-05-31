@@ -1,7 +1,7 @@
 package com.boxoffice.hubservice.config;
 
-import com.boxoffice.hubservice.hub.dto.response.HubGetResponseDto;
-import com.boxoffice.hubservice.hubroute.dto.response.HubRoutePathResponseDto;
+import com.boxoffice.hubservice.domain.hub.dto.response.HubGetResponseDto;
+import com.boxoffice.hubservice.domain.hubroute.dto.response.HubRoutePathResponseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
