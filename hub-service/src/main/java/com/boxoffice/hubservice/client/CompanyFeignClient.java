@@ -1,6 +1,11 @@
 package com.boxoffice.hubservice.client;
 
 import com.boxoffice.common.response.ApiResponse;
+import com.boxoffice.hubservice.client.dto.request.BulkHubTransferRequestDto;
+import com.boxoffice.hubservice.client.dto.request.BulkStockCountRequestDto;
+import com.boxoffice.hubservice.client.dto.response.BulkStockCountResponseDto;
+import com.boxoffice.hubservice.client.dto.response.CompanyDetailResponseDto;
+import com.boxoffice.hubservice.client.fallback.CompanyFeignClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;

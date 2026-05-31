@@ -35,16 +35,14 @@ public class UpdateOrderService {
             throw new BaseException(OrderErrorCode.ORDER_ALREADY_DELIVERED);
         }
 
-        Order updated = orderCommandService.updateOrder(order, request.request());
+        Order updated = orderCommandService.updateOrder(orderId, request.request());
         return CreateOrderResponseDto.toResponse(updated);
     }
 
     private void validateRole(UserDetailInfo user) {
         switch (user.role()) {
             case "MASTER", "HUB_MANAGER" -> {}
-            case "SUPPLIER_MANAGER", "DELIVERY_MANAGER" ->
-                throw new BaseException(OrderErrorCode.UNAUTHORIZED_ORDER);
-            default -> throw new BaseException(OrderErrorCode.UNAUTHORIZED_ORDER);
+          default -> throw new BaseException(OrderErrorCode.UNAUTHORIZED_ORDER);
         }
     }
 

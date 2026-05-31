@@ -1,13 +1,15 @@
 package boxoffice.orderservice.presentation.controller;
 
 import boxoffice.orderservice.application.service.command.DeleteOrderService;
+import boxoffice.orderservice.application.service.command.UpdateOrderService;
+import boxoffice.orderservice.application.service.dto.SearchOrderFilter;
 import boxoffice.orderservice.application.service.query.GetOrderService;
+import boxoffice.orderservice.application.service.command.OrderCreateService;
 import boxoffice.orderservice.application.service.command.OrderCreateService;
 import boxoffice.orderservice.application.service.dto.CreateOrderCommand;
 import boxoffice.orderservice.application.service.dto.OrderResultDto;
-import boxoffice.orderservice.application.service.dto.SearchOrderFilter;
+import boxoffice.orderservice.application.service.query.GetOrderService;
 import boxoffice.orderservice.application.service.query.SearchOrdersService;
-import boxoffice.orderservice.application.service.command.UpdateOrderService;
 import boxoffice.orderservice.domain.enums.OrderStatus;
 import boxoffice.orderservice.presentation.dto.request.CreateOrderRequestDto;
 import boxoffice.orderservice.presentation.dto.request.UpdateOrderRequest;
@@ -96,15 +98,15 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, GetOrderResponseDto.from(result)));
     }
 
-    @PatchMapping("/{orderId}")
-    public ResponseEntity<CreateOrderResponseDto> updateOrder(
-        @RequestHeader("X-User-Id") String keycloakId,
-        @PathVariable UUID orderId,
-        @RequestBody UpdateOrderRequest request
-    ) {
-        CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, request, keycloakId);
-        return ResponseEntity.ok(response);
-    }
+  @PatchMapping("/{orderId}")
+  public ResponseEntity<ApiResponse<CreateOrderResponseDto>> updateOrder(
+      @RequestHeader("X-User-Id") String keycloakId,
+      @PathVariable UUID orderId,
+      @RequestBody UpdateOrderRequest request
+  ) {
+    CreateOrderResponseDto response = updateOrderService.updateOrder(orderId, request, keycloakId);
+    return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK, response));
+  }
 
     @DeleteMapping("/{orderId}")
     public ResponseEntity<ApiResponse<Void>> deleteOrder(
