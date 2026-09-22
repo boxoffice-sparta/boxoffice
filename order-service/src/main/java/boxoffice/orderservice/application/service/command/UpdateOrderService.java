@@ -1,7 +1,8 @@
-package boxoffice.orderservice.application.service;
+package boxoffice.orderservice.application.service.command;
 
 import boxoffice.orderservice.application.client.UserFeignClient;
 import boxoffice.orderservice.application.client.dto.UserDetailInfo;
+import boxoffice.orderservice.application.service.query.OrderQueryService;
 import boxoffice.orderservice.domain.entity.Order;
 import boxoffice.orderservice.domain.enums.OrderStatus;
 import boxoffice.orderservice.infra.exception.OrderErrorCode;
@@ -34,7 +35,8 @@ public class UpdateOrderService {
             throw new BaseException(OrderErrorCode.ORDER_ALREADY_DELIVERED);
         }
 
-        Order updated = orderCommandService.updateOrder(orderId, request.request());
+        Order updated = orderCommandService.updateOrder(order, request.request());
+        orderQueryService.evictSearchCache();
         return CreateOrderResponseDto.toResponse(updated);
     }
 

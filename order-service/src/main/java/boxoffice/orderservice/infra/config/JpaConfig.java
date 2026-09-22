@@ -20,8 +20,10 @@ public class JpaConfig {
     return new AuditorAwareImpl();
   }
 
+  /*
   @Bean
   public JPAQueryFactory jpaQueryFactory() {
     return new JPAQueryFactory(entityManager);
   }
+   */
 }
