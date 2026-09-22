@@ -91,7 +91,7 @@ public class DeliveryService {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
-        checkDeliveryAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         return DeliveryResponseDto.from(delivery);
     }
 
@@ -101,7 +101,7 @@ public class DeliveryService {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
-        checkDeliveryAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         return deliveryRouteService.getRoutesByDelivery(deliveryId, pageable);
     }
 
@@ -110,7 +110,7 @@ public class DeliveryService {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = deliveryRepository.findByIdAndDeletedAtIsNull(deliveryId)
                 .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
-        checkDeliveryAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         return deliveryRouteService.getRouteByDelivery(deliveryId, routeId);
     }
 
@@ -120,7 +120,7 @@ public class DeliveryService {
     public DeliveryResponseDto updateDelivery(String keycloakSub, UUID deliveryId, DeliveryUpdateRequestDto request) {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = findDeliveryOrThrow(deliveryId);
-        checkWriteAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         delivery.updateInfo(request.recipientName(), request.recipientSlackId(), request.deliveryAddress().toAddressVO());
         return DeliveryResponseDto.from(delivery);
     }
@@ -128,7 +128,7 @@ public class DeliveryService {
     public DeliveryResponseDto updateDeliveryStatus(String keycloakSub, UUID deliveryId, DeliveryStatusUpdateRequestDto request) {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = findDeliveryOrThrow(deliveryId);
-        checkWriteAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         delivery.updateStatus(request.status());
         return DeliveryResponseDto.from(delivery);
     }
@@ -136,14 +136,14 @@ public class DeliveryService {
     public DeliveryRouteResponseDto updateDeliveryRoute(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteUpdateRequestDto request) {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = findDeliveryOrThrow(deliveryId);
-        checkWriteAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         return deliveryRouteService.updateRoute(routeId, deliveryId, request);
     }
 
     public DeliveryRouteResponseDto updateDeliveryRouteStatus(String keycloakSub, UUID deliveryId, UUID routeId, DeliveryRouteStatusUpdateRequestDto request) {
         UserResponseDto userInfo = getUserInfo(keycloakSub);
         Delivery delivery = findDeliveryOrThrow(deliveryId);
-        checkWriteAccess(delivery, userInfo);
+        checkAccess(delivery, userInfo);
         return deliveryRouteService.updateRouteStatus(routeId, deliveryId, request);
     }
 
@@ -172,7 +172,7 @@ public class DeliveryService {
                 .orElseThrow(() -> new BaseException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
     }
 
-    private void checkWriteAccess(Delivery delivery, UserResponseDto userInfo) {
+    private void checkAccess(Delivery delivery, UserResponseDto userInfo) {
         switch (userInfo.getRole()) {
             case MASTER -> { }
             case HUB_MANAGER -> {
@@ -189,31 +189,6 @@ public class DeliveryService {
                 }
             }
             default -> throw new BaseException(CommonErrorCode.FORBIDDEN);
-        }
-    }
-
-    private void checkDeliveryAccess(Delivery delivery, UserResponseDto userInfo) {
-        switch (userInfo.getRole()) {
-            case MASTER -> { }
-            case HUB_MANAGER -> {
-                if (userInfo.getHubId() == null ||
-                    !userInfo.getHubId().equals(delivery.getOriginHubId()) &&
-                    !userInfo.getHubId().equals(delivery.getDestinationHubId())) {
-                    throw new BaseException(CommonErrorCode.FORBIDDEN);
-                }
-            }
-            case DELIVERY_MANAGER -> {
-                if (delivery.getDeliveryPersonId() == null ||
-                    !userInfo.getId().equals(delivery.getDeliveryPersonId())) {
-                    throw new BaseException(CommonErrorCode.FORBIDDEN);
-                }
-            }
-            case SUPPLIER_MANAGER -> {
-                if (userInfo.getCompanyId() == null ||
-                    !userInfo.getCompanyId().equals(delivery.getCompanyId())) {
-                    throw new BaseException(CommonErrorCode.FORBIDDEN);
-                }
-            }
         }
     }
 
